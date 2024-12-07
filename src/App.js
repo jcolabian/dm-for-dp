@@ -88,7 +88,8 @@ function App() {
                 {node.id}
               </div>
             </div>
-          ))}        </div>
+          ))}        
+        </div>
       </div>
 
       <div className="sidebar sidebar-right">
