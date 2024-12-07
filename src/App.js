@@ -5,8 +5,9 @@ function App() {
   const [x, setX] = useState(2);
   const [y, setY] = useState(2);
   const [nodes, setNodes] = useState([]);
-  const [selectedNodes, setSelectedNodes] = useState([]);
+  const [selectedNode, setSelectedNode] = useState(null);
   const [edges, setEdges] = useState([]);
+  const [selectedEdge, setSelectedEdge] = useState(null);
 
   useEffect(() => {
     const newNodes = [];
@@ -22,12 +23,18 @@ function App() {
   const handleYChange = (e) => setY(Number(e.target.value));
 
   const handleNodeClick = (node) => {
-    if (selectedNodes.length === 0) {
-      setSelectedNodes([node]);
-    } else if (selectedNodes.length === 1) {
-      setEdges([...edges, { from: selectedNodes[0], to: node }]);
-      setSelectedNodes([]);
+    if (selectedNode === null) {
+      setSelectedNode(node);
+    } else if (selectedNode === node) {
+      setSelectedNode(null);
+    } else {
+      setEdges([...edges, { from: selectedNode, to: node }]);
+      setSelectedNode(null);
     }
+  };
+
+  const handleEdgeClick = (index) => {
+    setSelectedEdge(index);
   };
 
   return (
@@ -35,23 +42,21 @@ function App() {
       <div className="sidebar sidebar-left">
         <p>Left Sidebar Item 1</p>
         <p>Left Sidebar Item 2</p>
+        <div className="edge-list">
+          {edges.map((edge, index) => (
+            <p
+              key={index}
+              className={selectedEdge === index ? 'selected-edge' : ''}
+              onClick={() => handleEdgeClick(index)}
+            >
+              {`(${edge.from.id}) - (${edge.to.id})`}
+            </p>
+          ))}
+        </div>
       </div>
 
       <div className="main-content">
         <div className="graph-area">
-          {nodes.map(node => (
-            <div
-              key={node.id}
-              className={`graph-node ${selectedNodes.includes(node) ? 'selected' : ''}`}
-              onClick={() => handleNodeClick(node)}
-              style={{
-                left: `${(node.id % x) * 100 / x + 50 / x}%`,
-                top: `${Math.floor(node.id / x) * 100 / y + 50 / y}%`
-              }}
-            >
-              {node.id}
-            </div>
-          ))}
           {edges.map((edge, index) => (
             <svg key={index} className="edge-line">
               <line
@@ -59,11 +64,31 @@ function App() {
                 y1={`${Math.floor(edge.from.id / x) * 100 / y + 50 / y}%`}
                 x2={`${(edge.to.id % x) * 100 / x + 50 / x}%`}
                 y2={`${Math.floor(edge.to.id / x) * 100 / y + 50 / y}%`}
-                stroke="black"
+                stroke={selectedEdge === index ? 'red' : 'black'}
+                strokeWidth={selectedEdge === index ? 2 : 1}
               />
             </svg>
           ))}
-        </div>
+          {nodes.map(node => (
+            <div
+              key={node.id}
+              className="node-container"
+              style={{
+                left: `${(node.id % x) * 100 / x + 50 / x}%`,
+                top: `${Math.floor(node.id / x) * 100 / y + 50 / y}%`,
+              }}
+            >
+              <div className="node-coordinates">
+                {`(${node.id % x}, ${Math.floor(node.id / x)})`}
+              </div>
+              <div
+                className={`graph-node ${selectedNode === node ? 'selected' : ''}`}
+                onClick={() => handleNodeClick(node)}
+              >
+                {node.id}
+              </div>
+            </div>
+          ))}        </div>
       </div>
 
       <div className="sidebar sidebar-right">
