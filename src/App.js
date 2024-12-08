@@ -45,15 +45,26 @@ function App() {
     } else if (selectedNode.id === node.id) {
       setSelectedNode(null);
     } else {
-if (!edgeExists(selectedNode, node)) {
-      setEdges([...edges, { from: selectedNode, to: node }]);
-}      
+      if (!edgeExists(selectedNode, node)) {
+        setEdges([...edges, { from: selectedNode, to: node }]);
+      }      
       setSelectedNode(null);
     }
   };
 
   const handleEdgeClick = (index) => {
-    setSelectedEdge(index);
+    if (selectedEdge === index) {
+      setSelectedEdge(null);
+    } else {
+      setSelectedEdge(index);
+    }
+  };
+
+  const handleDeleteEdge = () => {
+    if (selectedEdge !== null) {
+      setEdges(edges.filter((_, index) => index !== selectedEdge));
+      setSelectedEdge(null);
+    }
   };
 
   return (
@@ -72,6 +83,7 @@ if (!edgeExists(selectedNode, node)) {
             </p>
           ))}
         </div>
+        <button onClick={() => handleDeleteEdge()}>Remove</button>
       </div>
 
       <div className="main-content">
