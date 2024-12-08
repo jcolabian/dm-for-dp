@@ -19,16 +19,28 @@ function App() {
     document.documentElement.style.setProperty('--y', y);
   }, [x, y]);
 
-  const handleXChange = (e) => setX(Number(e.target.value));
-  const handleYChange = (e) => setY(Number(e.target.value));
+  const handleXChange = (e) => { 
+    setX(Number(e.target.value));
+    setSelectedNode(null);
+  };
+  const handleYChange = (e) => { 
+    setY(Number(e.target.value));
+    setSelectedNode(null);
+  };
+
+  function edgeExists (nodeFrom, nodeTo) {
+    return edges.some(edge => edge.from.id === nodeFrom.id && edge.to.id === nodeTo.id)
+  }
 
   const handleNodeClick = (node) => {
     if (selectedNode === null) {
       setSelectedNode(node);
-    } else if (selectedNode === node) {
+    } else if (selectedNode.id === node.id) {
       setSelectedNode(null);
     } else {
+if (!edgeExists(selectedNode, node)) {
       setEdges([...edges, { from: selectedNode, to: node }]);
+}      
       setSelectedNode(null);
     }
   };
