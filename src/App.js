@@ -1,23 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import './App.css';
 
 function App() {
   const [x, setX] = useState(2);
   const [y, setY] = useState(2);
+  const [baseValue, setBase] = useState(0);
   const [nodes, setNodes] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [edges, setEdges] = useState([]);
   const [selectedEdge, setSelectedEdge] = useState(null);
 
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
+
   useEffect(() => {
     const newNodes = [];
     for (let i = 0; i < x * y; i++) {
-      newNodes.push({ id: i, text: `Node ${i}`, connections: [] });
+      newNodes.push({ id: i, text: `Node ${i}`, connections: [] , value: baseValue});
     }
     setNodes(newNodes);
     document.documentElement.style.setProperty('--x', x);
     document.documentElement.style.setProperty('--y', y);
-  }, [x, y]);
+  }, [baseValue, x, y]);
 
   const handleXChange = (e) => { 
     setX(Number(e.target.value));
@@ -26,6 +29,10 @@ function App() {
   const handleYChange = (e) => { 
     setY(Number(e.target.value));
     setSelectedNode(null);
+  };
+  const handleBaseChange = (e) => {
+    setBase(Number(e.target.value));
+    forceUpdate();
   };
 
   function edgeExists (nodeFrom, nodeTo) {
@@ -97,7 +104,7 @@ if (!edgeExists(selectedNode, node)) {
                 className={`graph-node ${selectedNode === node ? 'selected' : ''}`}
                 onClick={() => handleNodeClick(node)}
               >
-                {node.id}
+                {node.value}
               </div>
             </div>
           ))}        
@@ -117,6 +124,12 @@ if (!edgeExists(selectedNode, node)) {
           <label>
             Y:
             <input type="number" value={y} onChange={handleYChange} />
+          </label>
+        </div>
+        <div>
+          <label>
+            Base value:
+            <input type="number" step="1"onChange={handleBaseChange} />
           </label>
         </div>
       </div>
