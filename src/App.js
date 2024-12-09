@@ -9,24 +9,28 @@ function App() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [edges, setEdges] = useState([]);
   const [selectedEdge, setSelectedEdge] = useState(null);
+  const [condition, setCondition] = useState('none');
+  const [operation, setOperation] = useState('none');
+  const [opValue, setOpValue] = useState('0');
+
 
   const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   useEffect(() => {
     const newNodes = [];
     for (let i = 0; i < x * y; i++) {
-      newNodes.push({ id: i, text: `Node ${i}`, connections: [] , value: baseValue});
+      newNodes.push({ id: i, text: `Node ${i}`, connections: [], value: baseValue });
     }
     setNodes(newNodes);
     document.documentElement.style.setProperty('--x', x);
     document.documentElement.style.setProperty('--y', y);
   }, [baseValue, x, y]);
 
-  const handleXChange = (e) => { 
+  const handleXChange = (e) => {
     setX(Number(e.target.value));
     setSelectedNode(null);
   };
-  const handleYChange = (e) => { 
+  const handleYChange = (e) => {
     setY(Number(e.target.value));
     setSelectedNode(null);
   };
@@ -35,7 +39,7 @@ function App() {
     forceUpdate();
   };
 
-  function edgeExists (nodeFrom, nodeTo) {
+  function edgeExists(nodeFrom, nodeTo) {
     return edges.some(edge => edge.from.id === nodeFrom.id && edge.to.id === nodeTo.id)
   }
 
@@ -46,8 +50,8 @@ function App() {
       setSelectedNode(null);
     } else {
       if (!edgeExists(selectedNode, node)) {
-        setEdges([...edges, { from: selectedNode, to: node }]);
-      }      
+        handleAddEdge(selectedNode, node);
+      }
       setSelectedNode(null);
     }
   };
@@ -60,11 +64,41 @@ function App() {
     }
   };
 
+  const handleAddEdge = (fromNode, toNode) => {
+    const newEdge = { from: fromNode, to: toNode, condition: 'none', operation: 'none', opValue: '0' };
+    setEdges([...edges, newEdge]);
+  };
+
+  const handleEditRelation = () => {
+    if (selectedEdge !== null) {
+      const newEdges = edges.map((edge, index) => {
+        if (index === selectedEdge) {
+          edge.condition = condition;
+          edge.operation = operation;
+          edge.opValue = opValue;
+        }
+        return edge;
+      });
+      setEdges(newEdges);
+    }
+    forceUpdate();
+  };
+
   const handleDeleteEdge = () => {
     if (selectedEdge !== null) {
       setEdges(edges.filter((_, index) => index !== selectedEdge));
       setSelectedEdge(null);
     }
+  };
+
+  const handleConditionChange = (e) => {
+    setCondition(String(e.target.value));
+  };
+  const handleOperationChange = (e) => {
+    setOperation(String(e.target.value));
+  };
+  const handleOpValueChange = (e) => {
+    setOpValue(String(e.target.value));
   };
 
   return (
@@ -83,9 +117,40 @@ function App() {
             </p>
           ))}
         </div>
+        <button onClick={() => handleEditRelation()}>Edit Relation</button>
         <button onClick={() => handleDeleteEdge()}>Remove</button>
+        <div>
+          <label>
+            Condition:
+            <select value={condition} onChange={handleConditionChange} >
+              <option value="none">none</option>
+              <option value="<">&lt;</option>
+              <option value="<=">&lt;=</option>
+              <option value="==">==</option>
+              <option value=">=">&gt;=</option>
+              <option value=">">&gt;</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>
+            Operation:
+            <select value={operation} onChange={handleOperationChange} >
+              <option value="none">none</option>
+              <option value="+">+</option>
+              <option value="-">-</option>
+              <option value="*">*</option>
+              <option value="/">/</option>
+            </select>
+          </label>
+          <div>
+            <label>
+              Value:
+              <input type="string" value={opValue} onChange={handleOpValueChange} />
+            </label>
+          </div>
+        </div>
       </div>
-
       <div className="main-content">
         <div className="graph-area">
           {edges.map((edge, index) => (
@@ -119,7 +184,7 @@ function App() {
                 {node.value}
               </div>
             </div>
-          ))}        
+          ))}
         </div>
       </div>
 
@@ -141,7 +206,7 @@ function App() {
         <div>
           <label>
             Base value:
-            <input type="number" step="1"onChange={handleBaseChange} />
+            <input type="number" step="1" onChange={handleBaseChange} />
           </label>
         </div>
       </div>
