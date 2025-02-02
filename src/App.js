@@ -65,9 +65,9 @@ function App() {
               <svg key={index} className="edge-line">
                 <line
                   x1={`${(edge.from.id % x) * 100 / x + 50 / x}%`}
-                  y1={`${Math.floor(edge.from.id / x) * 100 / y + 50 / y}%`}
+                  y1={`${(y - 1 - Math.floor(edge.from.id / x)) * 100 / y + 50 / y}%`}
                   x2={`${(edge.to.id % x) * 100 / x + 50 / x}%`}
-                  y2={`${Math.floor(edge.to.id / x) * 100 / y + 50 / y}%`}
+                  y2={`${(y - 1 - Math.floor(edge.to.id / x)) * 100 / y + 50 / y}%`}
                   stroke={selectedEdge === index ? 'red' : 'black'}
                   strokeWidth={selectedEdge === index ? 2 : 1}
                 />
@@ -79,7 +79,7 @@ function App() {
                 className="node-container"
                 style={{
                   left: `${(node.id % x) * 100 / x + 50 / x}%`,
-                  top: `${Math.floor(node.id / x) * 100 / y + 50 / y}%`,
+                  top: `${(y - 1 - Math.floor(node.id / x)) * 100 / y + 50 / y}%`,
                 }}
               >
                 <div className="node-coordinates">
