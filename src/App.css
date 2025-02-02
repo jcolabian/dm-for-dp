@@ -3,40 +3,40 @@
   height: 100vh;
 }
 
-.sidebar {
-  width: 200px;
-  background-color: #f8f9fa;
-  padding: 10px;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-}
-
-.sidebar-left {
-  border-right: 1px solid #ddd;
-}
-
-.sidebar-right {
-  border-left: 1px solid #ddd;
-}
-
-.main-content {
-  flex: 1;
+.split-view {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  width: 100%;
+}
+
+.left-section {
+  width: 40%;
+  background-color: #f0f0f0;
+}
+
+.right-section {
+  width: 60%;
+  padding: 10px;
+}
+
+.upper-part {
+  height: 20%;
+  background-color: #e0e0e0;
+}
+
+.lower-part {
+  height: 80%;
+  background-color: #d0d0d0;
 }
 
 .graph-area {
-  display: grid;
-  gap: 10px;
+  position: relative;
   width: 100%;
   height: 100%;
-  grid-template-columns: repeat(var(--x), 1fr);
-  grid-template-rows: repeat(var(--y), 1fr);
-  position: relative;
 }
 
+.node-container {
+  position: absolute;
+}
 
 .node-container {
   position: absolute;
@@ -78,20 +78,4 @@
   height: 100%;
   pointer-events: none;
   z-index: 1;
-}
-
-.edge-list {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  padding: 10px;
-}
-
-.edge-list p {
-  cursor: pointer;
-}
-
-.edge-list p.selected-edge {
-  background-color: #f0f0f0;
-  border: 1px solid blue;
 }
