@@ -9,13 +9,13 @@
 }
 
 .left-section {
-  width: 40%;
+  width: 30%;
   background-color: #f0f0f0;
 }
 
 .right-section {
-  width: 60%;
-  padding: 10px;
+  width: 70%;
+  padding: 1px;
 }
 
 .upper-part {
@@ -25,7 +25,7 @@
 
 .lower-part {
   height: 80%;
-  background-color: #d0d0d0;
+  background-color: #ff0000;
 }
 
 .graph-area {
@@ -46,7 +46,7 @@
 
 .node-coordinates {
   position: absolute;
-  top: -40px;
+  top: -36px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 12px;
@@ -78,4 +78,28 @@
   height: 100%;
   pointer-events: none;
   z-index: 1;
+}
+
+.bottom-side-indicator {
+  height: 2vh;
+  background-color: #00000000;
+  border-left: 1px solid #000000;
+  border-right: 1px solid #000000;
+  position: absolute;
+  bottom: 0;
+}
+
+.left-side-indicator {
+  width: 2vh;
+  background-color: #00000000;
+  border-top: 1px solid #000000;
+  border-bottom: 1px solid #000000;
+  position: absolute;
+  left: 0;
+}
+
+.diagram-component {
+  width: 100%;
+  height: 100%;
+  background-color: #DAE4E4;
 }
