@@ -9,22 +9,22 @@
 }
 
 .left-section {
-  width: 30%;
+  width: 40%;
   background-color: #f0f0f0;
 }
 
 .right-section {
-  width: 70%;
+  width: 60%;
   padding: 1px;
 }
 
 .upper-part {
-  height: 20%;
+  height: 10%;
   background-color: #e0e0e0;
 }
 
 .lower-part {
-  height: 80%;
+  height: 90%;
   background-color: #ff0000;
 }
 
@@ -32,10 +32,6 @@
   position: relative;
   width: 100%;
   height: 100%;
-}
-
-.node-container {
-  position: absolute;
 }
 
 .node-container {
@@ -52,7 +48,14 @@
   font-size: 12px;
   color: black; 
   white-space: nowrap;
-  z-index: 3
+  z-index: 3;
+  display: none;
+}
+
+.node-container:hover .node-coordinates,
+.node-container.selected .node-coordinates,
+.node-container.sink .node-coordinates {
+  display: block;
 }
 
 .graph-node {
@@ -68,8 +71,24 @@
   transform: translate(-50%, -50%);
 }
 
-.graph-node.selected {
+.node-container.selected .graph-node {
   background-color: #a0c4ff;
+}
+
+.node-container.sink .graph-node {
+  background-color: #ec4d4d;
+}
+
+.node-container.source .graph-node {
+  background-color: #24ca2c;
+}
+
+.node-container.sink.selected .graph-node {
+  background-color: #bf4dec;
+}
+
+.node-container.source.selected .graph-node {
+  background-color: #ece924;
 }
 
 .edge-line {

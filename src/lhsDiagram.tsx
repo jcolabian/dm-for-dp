@@ -65,18 +65,173 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
       })
     });
 
-    diagram.nodeTemplate = $(
-      go.Node,
-      'Auto',
-      $(go.Shape, 'RoundedRectangle', { strokeWidth: 0 }, new go.Binding('fill', 'color')),
-      $(go.TextBlock, { margin: 8, editable: true }, new go.Binding('text', 'text').makeTwoWay())
-    );
+    const makeNodeContent = (from: boolean, to: boolean,
+      fromCount: number, toCount: number): go.Part => {
+      return $(go.Node, "Auto",
+        {
+          selectable: true,
+          resizable: false,
+        },
+        $(go.Shape, "RoundedRectangle",
+          {
+            fill: "#ffffff",
+            stroke: "#000000",
+            strokeWidth: 2,
+            width: 75,
+            height: 50,
+          }
+        ),
+        $(go.Panel, "Vertical",
+          { alignment: go.Spot.Center },
+          $(go.TextBlock,
+            {
+              text: "Name",
+              font: "bold 12px Segoe UI, sans-serif",
+              stroke: "#000000"
+            },
+            new go.Binding("text", "nodeName")
+          ),
+          $(go.Shape, "LineH",
+            {
+              stroke: "#000000",
+              strokeWidth: 1,
+              width: 100,
+              height: 6
+            }
+          ),
+          $(go.TextBlock,
+            {
+              text: "Value",
+              font: "12px Segoe UI, sans-serif",
+              stroke: "#000000"
+            },
+            new go.Binding("text", "nodeValue")
+          )
+        ),
+        $(go.Shape, "Circle",
+          {
+            desiredSize: new go.Size(10, 10), 
+            alignment: go.Spot.Top,
+            margin: new go.Margin(-5, 0, 0, 0),
+            fill: "black",
+            stroke: null,
+            portId: "topPort",
+            fromLinkable: false, toLinkable: to,
+            toMaxLinks: toCount,
+            cursor: "pointer"
+          }),
+          $(go.Shape, "Circle",
+            {
+              desiredSize: new go.Size(10, 10), 
+              alignment: go.Spot.Bottom,
+              margin: new go.Margin(0, 0, -5, 0),
+              fill: "black",
+              stroke: null,
+              portId: "bottomPort",
+              fromLinkable: from, toLinkable: false,
+              fromMaxLinks: fromCount,
+              cursor: "pointer"
+            }
+        )
+      );
+    };
+
+    diagram.nodeTemplate = makeNodeContent(true, true, 1, 1);
+
+    diagram.nodeTemplateMap.add("operation", makeNodeContent(true, true, Infinity, 2));
+
+    diagram.nodeTemplateMap.add("mutable", makeNodeContent(true, true, Infinity, 1));
+
+    diagram.nodeTemplateMap.add("immutable", makeNodeContent(true, false, Infinity, 1));
+
+    diagram.nodeTemplateMap.add("out", makeNodeContent(false, true, 1, 1));
 
     diagram.linkTemplate = $(
       go.Link,
       $(go.Shape),
       $(go.Shape, { toArrow: 'Standard' })
     );
+
+    diagram.groupTemplate = $(
+      go.Group, "Spot",
+      {
+        layout: $(go.GridLayout, { wrappingColumn: 5, spacing: new go.Size(10, 10) })
+      },
+      $(go.Panel, "Auto",
+        { name: "BODY" },
+        $(go.Shape, "RoundedRectangle",
+          { fill: "rgba(128,128,128,0.2)", stroke: "gray", strokeWidth: 2 }
+        ),
+        $(go.Placeholder, { padding: 10 })
+      ),
+      $(go.TextBlock,
+        {
+          alignment: new go.Spot(0, 0, 0, -10),
+          alignmentFocus: go.Spot.Left,
+          font: "bold 16px Segoe UI, sans-serif",
+          stroke: "#000000",
+          margin: 0
+        },
+        new go.Binding("text", "text")
+      )
+    );
+
+    diagram.validCycle = go.CycleMode.NotDirected;
+
+    diagram.toolManager.linkingTool.isEnabled = true;
+
+    diagram.allowClipboard = false;
+
+    //diagram.allowSelect = false;
+    //diagram.allowZoom = false;
+    diagram.allowCopy = false;
+    //diagram.allowDelete = false;
+    //diagram.allowHorizontalScroll = false;
+    //diagram.allowVerticalScroll = false;
+    diagram.allowTextEdit = false;
+
+    //diagram.toolManager.draggingTool.isEnabled = false;
+    //diagram.toolManager.clickCreatingTool.isEnabled = false;
+    //diagram.toolManager.dragSelectingTool.isEnabled = false;
+    //diagram.toolManager.linkingTool.isEnabled = false;
+    //diagram.toolManager.resizingTool.isEnabled = false;
+    //diagram.toolManager.rotatingTool.isEnabled = false;
+    //diagram.toolManager.panningTool.isEnabled = false;
+    //diagram.toolManager.textEditingTool.isEnabled = false;
+
+    //diagram.toolManager.hoverDelay = Infinity;
+
+    //diagram.contextMenu = null;
+
+    diagram.commandHandler.deleteSelection = () => {
+      this.props.onDiagramEvent({
+        name: "SelectionDeletingCustom",
+        subject: diagram.selection,
+        diagram: diagram,
+        parameter: null
+      });
+    };
+
+    /*
+    diagram.addDiagramListener("MouseUp", (e: go.DiagramEvent) => {
+      // Check if the released button is right (button === 2)
+      if (e.button === 2) {
+        // Find the node (if any) under the mouse point
+        const node = diagram.findPartAt(e.documentPoint, true);
+        if (node instanceof go.Node) {
+          // Call your custom event logic
+          this.props.onDiagramEvent({
+            name: "CustomLinkingRequestRelease",
+            subject: node,
+            diagram: diagram,
+            parameter: null
+          });
+          // Optionally mark the event as handled:
+          e.handled = true;
+        }
+      }
+    });
+    */
 
     return diagram;
   }
@@ -92,7 +247,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
         modelData={this.props.modelData}
         onModelChange={this.props.onModelChange}
         skipsDiagramUpdate={this.props.skipsDiagramUpdate}
-        style={{ width: '100%', height: '100%' }}  // added inline style
+        style={{ width: '100%', height: '100%' }}
       />
     );
   }
