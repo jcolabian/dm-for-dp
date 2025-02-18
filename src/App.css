@@ -71,6 +71,10 @@
   transform: translate(-50%, -50%);
 }
 
+.node-container.locked .graph-node {
+  border: 2px solid #000000;
+}
+
 .node-container.selected .graph-node {
   background-color: #a0c4ff;
 }

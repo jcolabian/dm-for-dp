@@ -65,8 +65,113 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
       })
     });
 
-    const makeNodeContent = (from: boolean, to: boolean,
-      fromCount: number, toCount: number): go.Part => {
+    const makePort = (n: number): go.Shape[] => {
+      switch (n) {
+        case 1:
+          return [
+            $(go.Shape, "Circle",
+              {
+                desiredSize: new go.Size(12, 12),
+                alignment: go.Spot.Top,
+                margin: new go.Margin(-6, 0, 0, 0),
+                fill: "black",
+                stroke: null,
+                portId: "topPort",
+                fromLinkable: false, toLinkable: true,
+                toMaxLinks: 1,
+                fromLinkableDuplicates: false, toLinkableDuplicates: false,
+                toSpot: go.Spot.Top,
+                cursor: "pointer"
+              }
+            )
+          ];
+        case 2:
+          return [
+            $(go.Shape, "Circle",
+              {
+                desiredSize: new go.Size(12, 12),
+                alignment: go.Spot.Left,
+                margin: new go.Margin(0, 0, 0, -6),
+                fill: "black",
+                stroke: null,
+                portId: "leftPort",
+                fromLinkable: false, toLinkable: true,
+                toMaxLinks: 1,
+                fromLinkableDuplicates: false, toLinkableDuplicates: false,
+                toSpot: go.Spot.Left,
+                cursor: "pointer"
+              }
+            ),
+            $(go.Shape, "Circle",
+              {
+                desiredSize: new go.Size(12, 12),
+                alignment: go.Spot.Right,
+                margin: new go.Margin(0, -6, 0, 0),
+                fill: "black",
+                stroke: null,
+                portId: "rightPort",
+                fromLinkable: false, toLinkable: true,
+                toMaxLinks: 1,
+                fromLinkableDuplicates: false, toLinkableDuplicates: false,
+                toSpot: go.Spot.Right,
+                cursor: "pointer"
+              }
+            )
+          ];
+        case 3:
+          return [
+            $(go.Shape, "Circle",
+              {
+                desiredSize: new go.Size(12, 12),
+                alignment: go.Spot.Left,
+                margin: new go.Margin(0, 0, 0, -6),
+                fill: "black",
+                stroke: null,
+                portId: "leftPort",
+                fromLinkable: false, toLinkable: true,
+                toMaxLinks: 1,
+                fromLinkableDuplicates: false, toLinkableDuplicates: false,
+                toSpot: go.Spot.Left,
+                cursor: "pointer"
+              }
+            ),
+            $(go.Shape, "Circle",
+              {
+                desiredSize: new go.Size(12, 12),
+                alignment: go.Spot.Right,
+                margin: new go.Margin(0, -6, 0, 0),
+                fill: "black",
+                stroke: null,
+                portId: "rightPort",
+                fromLinkable: false, toLinkable: true,
+                toMaxLinks: 1,
+                fromLinkableDuplicates: false, toLinkableDuplicates: false,
+                toSpot: go.Spot.Right,
+                cursor: "pointer"
+              }
+            ),
+            $(go.Shape, "Circle",
+              {
+                desiredSize: new go.Size(12, 12),
+                alignment: go.Spot.Top,
+                margin: new go.Margin(-6, 0, 0, 0),
+                fill: "black",
+                stroke: null,
+                portId: "topPort",
+                fromLinkable: false, toLinkable: true,
+                toMaxLinks: 1,
+                fromLinkableDuplicates: false, toLinkableDuplicates: false,
+                toSpot: go.Spot.Top,
+                cursor: "pointer"
+              }
+            )
+          ];
+        default:
+          return [];
+      }
+    };
+
+    const makeNodeContent = (from: boolean, toCount: number): go.Part => {
       return $(go.Node, "Auto",
         {
           selectable: true,
@@ -77,7 +182,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
             fill: "#ffffff",
             stroke: "#000000",
             strokeWidth: 2,
-            width: 75,
+            width: 100,
             height: 50,
           }
         ),
@@ -108,46 +213,42 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
             new go.Binding("text", "nodeValue")
           )
         ),
-        $(go.Shape, "Circle",
-          {
-            desiredSize: new go.Size(10, 10), 
-            alignment: go.Spot.Top,
-            margin: new go.Margin(-5, 0, 0, 0),
-            fill: "black",
-            stroke: null,
-            portId: "topPort",
-            fromLinkable: false, toLinkable: to,
-            toMaxLinks: toCount,
-            cursor: "pointer"
-          }),
+        makePort(toCount),
+        (from ?
           $(go.Shape, "Circle",
             {
-              desiredSize: new go.Size(10, 10), 
+              desiredSize: new go.Size(12, 12),
               alignment: go.Spot.Bottom,
-              margin: new go.Margin(0, 0, -5, 0),
+              margin: new go.Margin(0, 0, -6, 0),
               fill: "black",
               stroke: null,
               portId: "bottomPort",
-              fromLinkable: from, toLinkable: false,
-              fromMaxLinks: fromCount,
+              fromLinkable: true, toLinkable: false,
+              fromMaxLinks: Infinity,
+              fromLinkableDuplicates: false, toLinkableDuplicates: false,
+              fromSpot: go.Spot.Bottom,
               cursor: "pointer"
             }
-        )
+          )
+          : []),
       );
     };
 
-    diagram.nodeTemplate = makeNodeContent(true, true, 1, 1);
+    diagram.nodeTemplate = makeNodeContent(true, 1);
 
-    diagram.nodeTemplateMap.add("operation", makeNodeContent(true, true, Infinity, 2));
+    diagram.nodeTemplateMap.add("operation", makeNodeContent(true, 2));
 
-    diagram.nodeTemplateMap.add("mutable", makeNodeContent(true, true, Infinity, 1));
+    diagram.nodeTemplateMap.add("mutable", makeNodeContent(true, 1));
 
-    diagram.nodeTemplateMap.add("immutable", makeNodeContent(true, false, Infinity, 1));
+    diagram.nodeTemplateMap.add("immutable", makeNodeContent(true, 0));
 
-    diagram.nodeTemplateMap.add("out", makeNodeContent(false, true, 1, 1));
+    diagram.nodeTemplateMap.add("out", makeNodeContent(false, 1));
 
     diagram.linkTemplate = $(
       go.Link,
+      {
+        routing: go.Routing.AvoidsNodes
+      },
       $(go.Shape),
       $(go.Shape, { toArrow: 'Standard' })
     );
@@ -179,6 +280,15 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
     diagram.validCycle = go.CycleMode.NotDirected;
 
     diagram.toolManager.linkingTool.isEnabled = true;
+    //    diagram.toolManager.linkingTool.linkValidation
+
+    diagram.model =
+      $(go.GraphLinksModel,
+        {
+          linkFromPortIdProperty: "fromPort",
+          linkToPortIdProperty: "toPort"
+        }
+      );
 
     diagram.allowClipboard = false;
 
