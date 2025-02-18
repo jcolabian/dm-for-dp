@@ -491,6 +491,16 @@ class App extends React.Component<{}, AppState> {
     if (this.state.selectedKey === null || this.state.selectedKey === 0 ) {
       return;
     }
+    else if (this.state.selectedKey < 0) {
+      const updatedLinkDataArray: Array<go.ObjectData> = this.state.linkDataArray.filter(link =>
+        link.key !== this.state.selectedKey
+      );
+      this.setState({
+        selectedKey: null,
+        linkDataArray: updatedLinkDataArray
+      });
+
+    }
     else {
       const targetNode = this.state.nodeDataArray.find(node => node.key === this.state.selectedKey);
       if (targetNode === undefined || targetNode.group  !== undefined) {
