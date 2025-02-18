@@ -247,9 +247,12 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
     diagram.linkTemplate = $(
       go.Link,
       {
+        mouseEnter: (e, link) => link.elt(0).stroke = "rgba(0,90,156,0.3)",
+        mouseLeave: (e, link) => link.elt(0).stroke = "transparent",
         routing: go.Routing.AvoidsNodes
       },
-      $(go.Shape),
+      $(go.Shape, { isPanelMain: true, stroke: "transparent", strokeWidth: 8 }),
+      $(go.Shape, { isPanelMain: true }),
       $(go.Shape, { toArrow: 'Standard' })
     );
 

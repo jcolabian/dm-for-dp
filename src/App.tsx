@@ -488,21 +488,23 @@ class App extends React.Component<{}, AppState> {
   }
 
   handleDeleteButton() {
-    if (this.state.selectedKey === null || this.state.selectedKey === 0) {
+    if (this.state.selectedKey === null || this.state.selectedKey === 0 ) {
       return;
     }
     else {
       const targetNode = this.state.nodeDataArray.find(node => node.key === this.state.selectedKey);
-      if (targetNode === undefined) {
+      if (targetNode === undefined || targetNode.group  !== undefined) {
         return;
       }
 
+      let removed: number[] = [];
       const updatedNodeDataArray: Array<go.ObjectData> = this.state.nodeDataArray.filter(node => {
-        if (node.key === this.state.selectedKey &&
-          (node.type === SOURCE || node.type === OPERATION)) {
+        if (node.key === this.state.selectedKey) {
+          removed.push(node.key);
           return false;
         }
         if (node.group !== undefined && node.group === this.state.selectedKey) {
+          removed.push(node.key);
           return false;
         }
         return true;
@@ -514,7 +516,7 @@ class App extends React.Component<{}, AppState> {
       }
 
       const updatedLinkDataArray: Array<go.ObjectData> = this.state.linkDataArray.filter(link =>
-        link.from !== this.state.selectedKey && link.to !== this.state.selectedKey
+        removed.includes(link.from) === false && removed.includes(link.to) === false
       );
 
       this.setState({
