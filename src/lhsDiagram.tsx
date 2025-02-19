@@ -183,7 +183,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
             stroke: "#000000",
             strokeWidth: 2,
             width: 100,
-            height: 50,
+            height: 56,
           }
         ),
         $(go.Panel, "Vertical",
@@ -255,6 +255,8 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
       $(go.Shape, { isPanelMain: true }),
       $(go.Shape, { toArrow: 'Standard' })
     );
+
+    diagram.linkTemplateMap.add("hidden", $(go.Link));
 
     diagram.groupTemplate = $(
       go.Group, "Spot",
