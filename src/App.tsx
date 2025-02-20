@@ -38,11 +38,15 @@ interface AppState {
   lockDialogLock: boolean;
 
   constDialogOpen: boolean;
+
+  x: number;
+  y: number;
+  vals: number;
 }
 
 const x = 12;
 const y = 1;
-const baseValue = 1;
+const vals = 1;
 
 //TYPE DEFINITIONS
 const SINK = 0;
@@ -55,14 +59,14 @@ class App extends React.Component<{}, AppState> {
     super(props);
     const newNodes: tableNode[] = [];
     for (let i = 0; i < x * y; i++) {
-      newNodes.push({ id: i, text: `Node ${i}`, connections: [], value: baseValue * i * i, locked: false });
+      newNodes.push({ id: i, text: `Node ${i}`, connections: [], value: 0, locked: false });
     }
     this.state = {
       nodeDataArray: [
         { key: 0, text: 'Sink', tableId: -1, isGroup: true, type: SINK },
         { key: 1, nodeName: 'x', nodeValue: NaN, group: 0, type: VARIABLE, category: "immutable" },
         { key: 2, nodeName: 'y', nodeValue: NaN, group: 0, type: VARIABLE, category: "immutable" },
-        { key: 3, nodeName: 'fib', nodeValue: NaN, group: 0, type: VARIABLE, category: "out" },
+        { key: 3, nodeName: 'val1', nodeValue: NaN, group: 0, type: VARIABLE, category: "out" },
       ],
       linkDataArray: [
       ],
@@ -85,7 +89,11 @@ class App extends React.Component<{}, AppState> {
       dialogValue: 0,
       lockDialogLock: false,
 
-      constDialogOpen: false
+      constDialogOpen: false,
+
+      x: x,
+      y: y,
+      vals: vals
     };
     this.handleDiagramEvent = this.handleDiagramEvent.bind(this);
     this.handleModelChange = this.handleModelChange.bind(this);
@@ -95,6 +103,7 @@ class App extends React.Component<{}, AppState> {
     this.handleAddSourceButton = this.handleAddSourceButton.bind(this);
     this.handleDeleteButton = this.handleDeleteButton.bind(this);
     this.handleConstantButton = this.handleConstantButton.bind(this);
+    this.handleConditionalButton = this.handleConditionalButton.bind(this);
   }
 
   handleDiagramEvent(e: go.DiagramEvent) {
@@ -115,12 +124,12 @@ class App extends React.Component<{}, AppState> {
       }
       case 'CustomLinkingRequest': {
         const node = e.subject.data;
-//        console.log('CustomLinkingRequest', node);
+        //        console.log('CustomLinkingRequest', node);
         break;
       }
       case 'CustomLinkingRelease': {
         const node = e.subject.data;
-//        console.log('CustomLinkingRelease', node);
+        //        console.log('CustomLinkingRelease', node);
         break
       }
       default: break;
@@ -136,14 +145,14 @@ class App extends React.Component<{}, AppState> {
 
 
     e.insertedLinkKeys?.forEach((key) => {
-//      console.log("uoooooh i'm keying");
+      //      console.log("uoooooh i'm keying");
       const link = e.modifiedLinkData?.find((link) => link.key === key);
       if (link && link.key < this.state.currEdgeKey) {
-//        console.log("uoooooh i'm inserting");
+        //        console.log("uoooooh i'm inserting");
         //this.state.linkDataArray.filter((lA) => link.from === lA.from && link.to === lA.to);
         updatedLinkDataArray.push(link);
         currEdgeKey = Math.min(currEdgeKey, link.key);
-//        console.log(updatedLinkDataArray);
+        //        console.log(updatedLinkDataArray);
       }
     });
 
@@ -158,9 +167,10 @@ class App extends React.Component<{}, AppState> {
     if (e.modifiedNodeData) {
       return;
     }
-    const [updatedNodeDataArray, updatedTableNodes] = this.updateDependencyNodeValues(this.state.nodeDataArray, updatedLinkDataArray, this.state.tableNodes);
+    const [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(this.state.nodeDataArray, updatedLinkDataArray, this.state.tableNodes);
     this.setState({
       skipsDiagramUpdate: false,
+      sourceTableNodes: updatedSourceTableNodes,
       tableNodes: updatedTableNodes,
       nodeDataArray: updatedNodeDataArray,
     });
@@ -214,7 +224,7 @@ class App extends React.Component<{}, AppState> {
     return [sorted, reverseAdjacencyList];
   }
 
-  updateDependencyNodeValues(nodeDataArray: go.ObjectData[], linkDataArray: go.ObjectData[], tableNodes: tableNode[], sink?: number): [go.ObjectData[], tableNode[]] {
+  updateDependencyNodeValues(nodeDataArray: go.ObjectData[], linkDataArray: go.ObjectData[], tableNodes: tableNode[], sink?: number): [go.ObjectData[], tableNode[], number[]] {
     let dummyArray = [...nodeDataArray];
     let updatedNodeDataArray = [...nodeDataArray];
     let updatedLinkDataArray = [...linkDataArray];
@@ -250,7 +260,7 @@ class App extends React.Component<{}, AppState> {
       }
 
       let offset = i - sink;
-      
+
       for (let j = 0; j < orderedNodes.length; j++) {
         dummyArray = this.updateDependencyNodeFromDependencies(dummyArray, updatedTableNodes,
           orderedNodes[j], offset, reverseAdjacencyList.get(orderedNodes[j]));
@@ -268,12 +278,19 @@ class App extends React.Component<{}, AppState> {
         console.log('sorry:', i);
       }
 
-      if(offset === 0) {
+      if (offset === 0) {
         updatedNodeDataArray = [...dummyArray];
       }
     }
 
-    return [updatedNodeDataArray, updatedTableNodes];
+    let updatedSourceTableNodes: number[] = [];
+    for (let i = 0; i < updatedNodeDataArray.length; i++) {
+      if (updatedNodeDataArray[i].type === SOURCE) {
+        updatedSourceTableNodes.push(updatedNodeDataArray[i].tableId);
+      }
+    }
+
+    return [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes];
   }
 
   updateTableNodeValues() {
@@ -298,23 +315,29 @@ class App extends React.Component<{}, AppState> {
         if (deps && deps.length === 2) {
           let leftDep = nodeDataArray.find((node) => node.key === deps[0].from);
           let rightDep = nodeDataArray.find((node) => node.key === deps[1].from);
+          let parentId = nodeDataArray.findIndex((node) => node.key === nodeDataArray[index].group);
           if (leftDep && rightDep) {
             if (deps[0].toPort === "rightPort" && deps[1].toPort === "leftPort") {
               [leftDep, rightDep] = [rightDep, leftDep];
             }
-            
-            let newValueIndex = leftDep.nodeValue + x * rightDep.nodeValue + offset;
-            
+
+            let newValueIndex = leftDep.nodeValue + this.state.x * rightDep.nodeValue;
+
             if (newValueIndex >= 0 && newValueIndex < tableNodes.length) {
               console.log('immutable - ', 'left:', leftDep, ' right:', rightDep, ' index:', newValueIndex, 'value:', tableNodes[newValueIndex].value);
-              updatedNodeDataArray[index] = { 
-                ...updatedNodeDataArray[index], 
-                nodeValue: tableNodes[newValueIndex].value 
+              updatedNodeDataArray[parentId] = {
+                ...updatedNodeDataArray[parentId],
+                tableId: newValueIndex
+              };
+              updatedNodeDataArray[index] = {
+                ...updatedNodeDataArray[index],
+                nodeValue: tableNodes[newValueIndex].value
               };
             } else {
               console.warn("newValueIndex out of bounds:", newValueIndex, "tableNodes length:", tableNodes.length);
-              updatedNodeDataArray[index] = { 
-                ...updatedNodeDataArray[index], 
+              console.warn('immutable - ', 'left:', leftDep, ' right:', rightDep, ' index:', newValueIndex, 'value:', NaN);
+              updatedNodeDataArray[index] = {
+                ...updatedNodeDataArray[index],
                 nodeValue: NaN
               };
             }
@@ -340,6 +363,24 @@ class App extends React.Component<{}, AppState> {
           updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: dep.nodeValue };
         }
       }
+      else {
+        if (updatedNodeDataArray[index].nodeName === "x") {
+          const sinkX = nodeDataArray.find((node) => node.key === 1);
+          const sinkY = nodeDataArray.find((node) => node.key === 2);
+          const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
+          const newX = (sinkX.nodeValue + sinkY.nodeValue * this.state.x + parent.tableOffset + offset) % this.state.x;
+          console.log('x - prev:', updatedNodeDataArray[index].nodeValue, ' newX:', newX);
+          updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newX };
+        }
+        else if (updatedNodeDataArray[index].nodeName === "y") {
+          const sinkX = nodeDataArray.find((node) => node.key === 1);
+          const sinkY = nodeDataArray.find((node) => node.key === 2);
+          const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
+          const newY = Math.floor((sinkX.nodeValue + sinkY.nodeValue * this.state.x + parent.tableOffset + offset) / this.state.x)
+          console.log('y - prev:', updatedNodeDataArray[index].nodeValue, ' offset:', newY);
+          updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newY };
+        }
+      }
     }
     else if (updatedNodeDataArray[index].category === "operation") {
       if (deps && deps.length === 2) {
@@ -358,9 +399,33 @@ class App extends React.Component<{}, AppState> {
         updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: NaN };
       }
     }
+    else if (updatedNodeDataArray[index].category === "conditional") {
+      if (deps && deps.length === 3) {
+        let ifDep = nodeDataArray.find((node) => node.key === deps[0].from);
+        let thenDep = nodeDataArray.find((node) => node.key === deps[1].from);
+        let elseDep = nodeDataArray.find((node) => node.key === deps[2].from);
+        if (ifDep && thenDep && elseDep) {
+          if (deps[1].toPort === "topPort") {
+            [ifDep, thenDep] = [thenDep, ifDep];
+            if (deps[1].toPort === "rightPort") {
+              [thenDep, elseDep] = [elseDep, thenDep];
+            }
+          }
+          else if (deps[2].toPort === "topPort") {
+            [ifDep, elseDep] = [elseDep, ifDep];
+            if (deps[2].toPort === "leftPort") {
+              [thenDep, elseDep] = [elseDep, thenDep];
+            }
+          }
+          let newValue = (ifDep.nodeValue !== 0) ? thenDep.nodeValue : elseDep.nodeValue;
+          console.log('conditional - ', 'if:', ifDep, ' then:', thenDep, ' else:', elseDep, ' newValue:', newValue);
+          updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newValue };
+        }
+      }
+    }
 
     console.log(updatedNodeDataArray[index].category)
-//    console.log('updated:', updatedNodeDataArray);
+    //    console.log('updated:', updatedNodeDataArray);
     return updatedNodeDataArray;
   }
 
@@ -428,7 +493,7 @@ class App extends React.Component<{}, AppState> {
       case 'Or':
         return (a === 0 && b === 0) ? 0 : 1;
       case 'And':
-        return (a !== 0 && b !== 1) ? 1 : 0;
+        return (a !== 0 && b !== 0) ? 1 : 0;
       case 'Equal':
         return (a === b) ? 1 : 0;
       case 'Smaller':
@@ -444,7 +509,7 @@ class App extends React.Component<{}, AppState> {
     let keys: number[] = [];
     for (let i = 0; i < newNodes.length; i++) {
       updatedNodeDataArray.push({ ...newNodes[i], key: newKey });
-//      console.log('key:', newKey);
+      //      console.log('key:', newKey);
       keys.push(newKey);
       newKey++;
     }
@@ -496,10 +561,8 @@ class App extends React.Component<{}, AppState> {
           );
         }
       });
-      let updatedSourceTableNodes = this.state.sourceTableNodes.map((source) => {
-        return this.state.tableNodes[source + offset].id;
-      });
-      [updatedNodeDataArray, updatedTableNodes] = this.updateDependencyNodeValues(
+      let updatedSourceTableNodes: number[] = [];
+      [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(
         updatedNodeDataArray,
         this.state.linkDataArray,
         updatedTableNodes,
@@ -516,8 +579,16 @@ class App extends React.Component<{}, AppState> {
     else {
       let updatedNodeDataArray = this.updateDependencyNodeFromTableNode(this.state.nodeDataArray, 0,
         this.state.tableNodes[this.state.selectedTableNode]);
+
+      updatedNodeDataArray.forEach((node) => {
+        if (node.tableOffset !== undefined) {
+          node.tableOffset = node.tableId - this.state.selectedTableNode;
+        }
+      });
+
       let updatedTableNodes = this.state.tableNodes;
-      [updatedNodeDataArray, updatedTableNodes] = this.updateDependencyNodeValues(
+      let updatedSourceTableNodes = this.state.sourceTableNodes;
+      [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(
         updatedNodeDataArray,
         this.state.linkDataArray,
         updatedTableNodes,
@@ -526,6 +597,7 @@ class App extends React.Component<{}, AppState> {
       this.setState({
         tableNodes: updatedTableNodes,
         nodeDataArray: updatedNodeDataArray,
+        sourceTableNodes: updatedSourceTableNodes,
         selectedTableNode: null,
         sinkTableNode: this.state.selectedTableNode
       });
@@ -541,11 +613,12 @@ class App extends React.Component<{}, AppState> {
     else {
       const newSource = this.state.selectedTableNode;
       const newKey = this.state.currNodeKey + 1;
+      const off = newSource - ((this.state.sinkTableNode === null) ? 0 : this.state.sinkTableNode);
       const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
-        { text: 'Source', tableId: newSource, isGroup: true, type: SOURCE },
+        { text: 'Source', tableId: newSource, tableOffset: off, isGroup: true, type: SOURCE },
         { nodeName: 'x', nodeValue: newSource % x, group: newKey, type: VARIABLE, category: "mutable" },
         { nodeName: 'y', nodeValue: Math.floor(newSource / x), group: newKey, type: VARIABLE, category: "mutable" },
-        { nodeName: 'fib', nodeValue: this.state.tableNodes[newSource].value, group: newKey, type: VARIABLE, category: "immutable" },
+        { nodeName: 'val1', nodeValue: this.state.tableNodes[newSource].value, group: newKey, type: VARIABLE, category: "immutable" },
       ]);
 
       const [updatedLinkDataArray, _] = this.addDependencyEdges([
@@ -626,7 +699,7 @@ class App extends React.Component<{}, AppState> {
   }
 
   handleConstantButton() {
-    this.setState({ 
+    this.setState({
       constDialogOpen: true,
       lockDialogOpen: false,
       lockDialogNode: null,
@@ -641,6 +714,16 @@ class App extends React.Component<{}, AppState> {
       nodeDataArray: updatedNodeDataArray,
       currNodeKey: this.state.currNodeKey + 1,
       constDialogOpen: false,
+    });
+  }
+
+  handleConditionalButton() {
+    const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
+      { nodeName: "if", nodeValue: NaN, type: OPERATION, category: "conditional" },
+    ]);
+    this.setState({
+      nodeDataArray: updatedNodeDataArray,
+      currNodeKey: this.state.currNodeKey + 1
     });
   }
 
@@ -668,20 +751,56 @@ class App extends React.Component<{}, AppState> {
       dialogValue: node.value,
       lockDialogLock: node.locked,
     });
-//    console.log('lockDialogNode:', this.state.lockDialogNode);
+    //    console.log('lockDialogNode:', this.state.lockDialogNode);
   };
 
   manualUpdate = () => {
-    const newState = produce(this.state, (draft) => {
-      if (this.state.lockDialogNode) {
-        draft.tableNodes[this.state.lockDialogNode.id].value = this.state.dialogValue;
-        draft.tableNodes[this.state.lockDialogNode.id].locked = this.state.lockDialogLock;
-      }
-      draft.lockDialogOpen = false;
-      draft.lockDialogNode = null;
+    let updatedNodeDataArray = this.state.nodeDataArray;
+    let updatedTableNodes = this.state.tableNodes;
+    let updatedSourceTableNodes = this.state.sourceTableNodes;
+
+    if (this.state.lockDialogNode) {
+      updatedTableNodes[this.state.lockDialogNode.id].value = this.state.dialogValue;
+      updatedTableNodes[this.state.lockDialogNode.id].locked = this.state.lockDialogLock;
+    }
+
+    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(this.state.nodeDataArray, this.state.linkDataArray, updatedTableNodes);
+    this.setState({
+      nodeDataArray: updatedNodeDataArray,
+      tableNodes: updatedTableNodes,
+      sourceTableNodes: updatedSourceTableNodes,
+      lockDialogOpen: false,
+      lockDialogNode: null,
     });
-    this.setState(newState);
   };
+
+  updateTableNodesLength(nX: number, nY: number) {
+    if (this.state.sinkTableNode !== null && (nX * nY < this.state.sinkTableNode || this.state.sourceTableNodes.some(source => nX * nY < source))) {
+      console.warn("Table size is too small for the current sink/source nodes");
+      return;
+    }
+
+    let updatedTableNodes: tableNode[] = [];
+    for (let i = 0; i < nX * nY; i++) {
+      if (i < this.state.tableNodes.length) {
+        updatedTableNodes.push(this.state.tableNodes[i]);
+      }
+      else {
+        updatedTableNodes.push({ id: i, text: `Node ${i}`, connections: [], value: 0, locked: false });
+      }
+    }
+    let updatedNodeDataArray = this.state.nodeDataArray;
+    let updatedSourceTableNodes = this.state.sourceTableNodes;
+    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(this.state.nodeDataArray, this.state.linkDataArray, updatedTableNodes);
+
+    this.setState({
+      tableNodes: updatedTableNodes,
+      x: nX,
+      y: nY,
+      nodeDataArray: updatedNodeDataArray,
+      sourceTableNodes: updatedSourceTableNodes,
+    });
+  }
 
   render() {
     console.log('nodeDataArray', this.state.nodeDataArray);
@@ -721,6 +840,39 @@ class App extends React.Component<{}, AppState> {
               <button onClick={() => this.addOperation('Not')}>Not</button>
               <button onClick={() => this.addOperation('Equal')}>Equal</button>
               <button onClick={() => this.addOperation('Smaller')}>Smaller</button>
+              <br />
+              <label>
+                x:
+                <input
+                  type="number"
+                  value={this.state.x}
+                  onChange={(e) =>
+                    this.updateTableNodesLength(Number(e.target.value), this.state.y)
+                  }
+                />
+              </label>
+              <label>
+                y:
+                <input
+                  type="number"
+                  value={this.state.y}
+                  onChange={(e) =>
+                    this.updateTableNodesLength(this.state.x, Number(e.target.value))
+                  }
+                />
+              </label>
+              {/*
+              <label>
+                vals:
+                <input
+                  type="number"
+                  value={this.state.vals}
+                  onChange={(e) =>
+                    this.setState({ vals: Number(e.target.value) })
+                  }
+                />
+              </label>
+              */}
             </div>
             <div className="lower-part">
               <LhsDiagramWrapper
@@ -736,16 +888,18 @@ class App extends React.Component<{}, AppState> {
 
           <div className="right-section">
             <div className="graph-area">
+              {/*
               {this.state.tableEdges.map((edge, index) => (
                 <svg key={index} className="edge-line">
                   <line
-                    x1={`${(edge.from.id % x) * 100 / x + 50 / x}%`}
-                    y1={`${(y - 1 - Math.floor(edge.from.id / x)) * 100 / y + 50 / y}%`}
-                    x2={`${(edge.to.id % x) * 100 / x + 50 / x}%`}
-                    y2={`${(y - 1 - Math.floor(edge.to.id / x)) * 100 / y + 50 / y}%`}
+                    x1={`${(edge.from.id % this.state.x) * 100 / this.state.x + 50 / this.state.x}%`}
+                    y1={`${(this.state.y - 1 - Math.floor(edge.from.id / this.state.x)) * 100 / this.state.y + 50 / this.state.y}%`}
+                    x2={`${(edge.to.id % this.state.x) * 100 / this.state.x + 50 / this.state.x}%`}
+                    y2={`${(this.state.y - 1 - Math.floor(edge.to.id / this.state.x)) * 100 / this.state.y + 50 / this.state.y}%`}
                   />
                 </svg>
               ))}
+              */}
               {this.state.tableNodes.map(node => (
                 <div
                   key={node.id}
@@ -756,13 +910,13 @@ class App extends React.Component<{}, AppState> {
                     ${this.state.tableNodes[node.id].locked ? 'locked' : ''}`
                   }
                   style={{
-                    left: `${(node.id % x) * 100 / x + 50 / x}%`,
-                    top: `${(y - 1 - Math.floor(node.id / x)) * 100 / y + 50 / y}%`,
+                    left: `${(node.id % this.state.x) * 100 / this.state.x + 50 / this.state.x}%`,
+                    top: `${(this.state.y - 1 - Math.floor(node.id / this.state.x)) * 100 / this.state.y + 50 / this.state.y}%`,
                   }}
                   onDoubleClick={() => this.openDialog(node)}
                 >
                   <div className="node-coordinates">
-                    {`(${Math.floor(node.id / x)}, ${node.id % x})`}
+                    {`(${Math.floor(node.id / this.state.x)}, ${node.id % this.state.x})`}
                   </div>
                   <div
                     className="graph-node"

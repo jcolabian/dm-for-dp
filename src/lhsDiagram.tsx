@@ -238,6 +238,8 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
 
     diagram.nodeTemplateMap.add("operation", makeNodeContent(true, 2));
 
+    diagram.nodeTemplateMap.add("conditional", makeNodeContent(true, 3));
+
     diagram.nodeTemplateMap.add("mutable", makeNodeContent(true, 1));
 
     diagram.nodeTemplateMap.add("immutable", makeNodeContent(true, 0));
