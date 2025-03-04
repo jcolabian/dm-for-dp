@@ -233,9 +233,9 @@ class App extends React.Component<{}, AppState> {
   }
 
   updateDependencyNodeValues(
-    nodeDataArray: go.ObjectData[], 
-    linkDataArray: go.ObjectData[], 
-    tableNodes: tableNode[], 
+    nodeDataArray: go.ObjectData[],
+    linkDataArray: go.ObjectData[],
+    tableNodes: tableNode[],
     x: number, y: number, sink?: number
   ): [go.ObjectData[], tableNode[], number[]] {
     let dummyArray = [...nodeDataArray];
@@ -313,12 +313,11 @@ class App extends React.Component<{}, AppState> {
   }
 
   updateDependencyNodeFromDependencies(
-    nodeDataArray: Array<go.ObjectData>, 
-    tableNodes: tableNode[], 
-    dKey: number, offset: number, 
-    x: number, y: number, 
-    sink: number, deps?: go.ObjectData[]) 
-    {
+    nodeDataArray: Array<go.ObjectData>,
+    tableNodes: tableNode[],
+    dKey: number, offset: number,
+    x: number, y: number,
+    sink: number, deps?: go.ObjectData[]) {
     let updatedNodeDataArray = [...nodeDataArray];
     const index = nodeDataArray.findIndex((node) => node.key === dKey);
 
@@ -798,31 +797,34 @@ class App extends React.Component<{}, AppState> {
   };
 
   manualUpdate = () => {
-    let updatedNodeDataArray = this.state.nodeDataArray;
-    let updatedTableNodes = this.state.tableNodes;
-    let updatedSourceTableNodes = this.state.sourceTableNodes;
+    this.setState(
+      produce((draft: AppState) => {
+        if (draft.lockDialogNode) {
+          const id = draft.lockDialogNode.id;
+          draft.tableNodes[id].value = draft.dialogValue;
+          draft.tableNodes[id].locked = draft.lockDialogLock;
+        }
 
-    if (this.state.lockDialogNode) {
-      updatedTableNodes[this.state.lockDialogNode.id].value = this.state.dialogValue;
-      updatedTableNodes[this.state.lockDialogNode.id].locked = this.state.lockDialogLock;
-    }
+        let updatedNodeDataArray: go.ObjectData[] = [];
+        let updatedTableNodes: tableNode[] = [];
+        let updatedSourceTableNodes: number[] = [];
 
-    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
-      this.updateDependencyNodeValues(
-        this.state.nodeDataArray,
-        this.state.linkDataArray,
-        updatedTableNodes,
-        this.state.x,
-        this.state.y,
-        this.state.sinkTableNode
-      );
-    this.setState({
-      nodeDataArray: updatedNodeDataArray,
-      tableNodes: updatedTableNodes,
-      sourceTableNodes: updatedSourceTableNodes,
-      lockDialogOpen: false,
-      lockDialogNode: null,
-    });
+        [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
+          this.updateDependencyNodeValues(
+            draft.nodeDataArray,
+            draft.linkDataArray,
+            draft.tableNodes,
+            draft.x,
+            draft.y,
+            draft.sinkTableNode
+          );
+        draft.nodeDataArray = updatedNodeDataArray;
+        draft.tableNodes = updatedTableNodes;
+        draft.sourceTableNodes = updatedSourceTableNodes;
+        draft.lockDialogOpen = false;
+        draft.lockDialogNode = null;
+      })
+    );
   };
 
   updateTableLengthY(nY: number) {
@@ -863,6 +865,7 @@ class App extends React.Component<{}, AppState> {
         draft.nodeDataArray = updatedNodeDataArray;
         draft.tableNodes = updatedTableNodes;
         draft.sourceTableNodes = updatedSourceTableNodes;
+        draft.selectedTableNode = undefined;
       })
     );
   }
@@ -881,8 +884,15 @@ class App extends React.Component<{}, AppState> {
 
         let updatedTableNodes: tableNode[] = [];
         for (let i = 0; i < nX * draft.y; i++) {
-          if (i < draft.tableNodes.length) {
-            updatedTableNodes.push(draft.tableNodes[i]);
+          if (i % nX < draft.x) {
+            let currNode = draft.tableNodes[i % nX + Math.floor(i / nX) * draft.x];
+            updatedTableNodes.push({
+              id: i,
+              text: `Node ${i}`,
+              connections: [],
+              value: currNode.value,
+              locked: currNode.locked,
+            });
           } else {
             updatedTableNodes.push({
               id: i,
@@ -916,7 +926,7 @@ class App extends React.Component<{}, AppState> {
               updatedNodeDataArray.push({
                 ...draft.nodeDataArray[i],
                 tableId: oldX + oldY * nX,
-                tableOffset: oldOffset - 
+                tableOffset: oldOffset -
                   (Math.floor((updatedSinkTableNode ?? 0) / nX) - oldY)
                   * ((nX < draft.x) ? -1 : 1),
               });
@@ -945,6 +955,7 @@ class App extends React.Component<{}, AppState> {
         draft.tableNodes = updatedTableNodes;
         draft.sourceTableNodes = updatedSourceTableNodes;
         draft.sinkTableNode = updatedSinkTableNode;
+        draft.selectedTableNode = undefined;
       })
     );
   }
