@@ -98,8 +98,8 @@ class App extends React.Component<{}, AppState> {
       y: y,
       vals: vals,
 
-      lhsStep: 1,
-      rhsStep: 1
+      lhsStep: 4,
+      rhsStep: newNodes.length
     };
     this.handleDiagramEvent = this.handleDiagramEvent.bind(this);
     this.handleModelChange = this.handleModelChange.bind(this);
@@ -670,7 +670,8 @@ class App extends React.Component<{}, AppState> {
         currEdgeKey: this.state.currEdgeKey - 2,
         nodeDataArray: updatedNodeDataArray,
         linkDataArray: updatedLinkDataArray,
-        sourceTableNodes: [...this.state.sourceTableNodes, newSource]
+        sourceTableNodes: [...this.state.sourceTableNodes, newSource],
+        lhsStep: this.state.lhsStep + 4,
       });
     }
   }
@@ -721,7 +722,8 @@ class App extends React.Component<{}, AppState> {
         selectedKey: null,
         sourceTableNodes: updatedSourceTableNodes,
         nodeDataArray: updatedNodeDataArray,
-        linkDataArray: updatedLinkDataArray
+        linkDataArray: updatedLinkDataArray,
+        lhsStep: this.state.lhsStep - removed.length,
       });
     }
   }
@@ -732,7 +734,8 @@ class App extends React.Component<{}, AppState> {
     ]);
     this.setState({
       nodeDataArray: updatedNodeDataArray,
-      currNodeKey: this.state.currNodeKey + 1
+      currNodeKey: this.state.currNodeKey + 1,
+      lhsStep: this.state.lhsStep + 1,
     });
   }
 
@@ -742,7 +745,8 @@ class App extends React.Component<{}, AppState> {
     ]);
     this.setState({
       nodeDataArray: updatedNodeDataArray,
-      currNodeKey: this.state.currNodeKey + 1
+      currNodeKey: this.state.currNodeKey + 1,
+      lhsStep: this.state.lhsStep + 1,
     });
   }
 
@@ -762,6 +766,7 @@ class App extends React.Component<{}, AppState> {
       nodeDataArray: updatedNodeDataArray,
       currNodeKey: this.state.currNodeKey + 1,
       constDialogOpen: false,
+      lhsStep: this.state.lhsStep + 1,
     });
   }
 
@@ -771,7 +776,8 @@ class App extends React.Component<{}, AppState> {
     ]);
     this.setState({
       nodeDataArray: updatedNodeDataArray,
-      currNodeKey: this.state.currNodeKey + 1
+      currNodeKey: this.state.currNodeKey + 1,
+      lhsStep: this.state.lhsStep + 1,
     });
   }
 
@@ -854,7 +860,6 @@ class App extends React.Component<{}, AppState> {
           }
         }
 
-        draft.y = nY;
 
         let updatedNodeDataArray: go.ObjectData[] = [];
         let updatedSourceTableNodes: number[] = [];
@@ -872,6 +877,8 @@ class App extends React.Component<{}, AppState> {
         draft.tableNodes = updatedTableNodes;
         draft.sourceTableNodes = updatedSourceTableNodes;
         draft.selectedTableNode = undefined;
+        draft.rhsStep = (draft.rhsStep == draft.x * draft.y) ? draft.x * nY : Math.min(draft.rhsStep, draft.x * nY);
+        draft.y = nY;
       })
     );
   }
@@ -944,15 +951,13 @@ class App extends React.Component<{}, AppState> {
           }
         }
 
-        draft.x = nX;
-
         let updatedSourceTableNodes: number[] = draft.sourceTableNodes;
         [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
           this.updateDependencyNodeValues(
             updatedNodeDataArray,
             draft.linkDataArray,
             updatedTableNodes,
-            draft.x,
+            nX,
             draft.y,
             updatedSinkTableNode
           );
@@ -962,6 +967,8 @@ class App extends React.Component<{}, AppState> {
         draft.sourceTableNodes = updatedSourceTableNodes;
         draft.sinkTableNode = updatedSinkTableNode;
         draft.selectedTableNode = undefined;
+        draft.rhsStep = (draft.rhsStep == draft.x * draft.y) ? nX * draft.y : Math.min(draft.rhsStep, nX * draft.y);
+        draft.x = nX;
       })
     );
   }
@@ -983,7 +990,6 @@ class App extends React.Component<{}, AppState> {
         <div className="split-view">
           <div className="left-section">
             <div className="upper-part">
-              {/* Existing buttons ... */}
               <button onClick={this.handleSetSinkButton}>set Sink</button>
               <button onClick={this.handleAddSourceButton}>add Source</button>
               <button onClick={this.handleConstantButton}>Constant</button>
@@ -996,7 +1002,6 @@ class App extends React.Component<{}, AppState> {
               <button onClick={() => this.addOperation('Modulo')}>Modulo</button>
               <button onClick={() => this.addOperation('Minimum')}>Minimum</button>
               <button onClick={() => this.addOperation('Maximum')}>Maximum</button>
-              {/* Half a dozen more buttons */}
               <br />
               <button onClick={this.handleConditionalButton}>Condition</button>
               <button onClick={() => this.addOperation('Or')}>Or</button>
@@ -1043,7 +1048,7 @@ class App extends React.Component<{}, AppState> {
                 <input
                   type="range"
                   min="1"
-                  max="10"
+                  max={this.state.nodeDataArray.length}
                   value={this.state.lhsStep}
                   onChange={(e) =>
                     this.setState({ lhsStep: Number(e.target.value) })
@@ -1057,7 +1062,7 @@ class App extends React.Component<{}, AppState> {
                 <input
                   type="range"
                   min="1"
-                  max="10"
+                  max={this.state.tableNodes.length}
                   value={this.state.rhsStep}
                   onChange={(e) =>
                     this.setState({ rhsStep: Number(e.target.value) })
