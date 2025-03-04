@@ -62,6 +62,10 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
       'undoManager.isEnabled': true,
       model: $(go.GraphLinksModel, {
         linkKeyProperty: 'key'
+//      }),
+//      layout: $(go.LayeredDigraphLayout,{
+//        direction: 90,
+//        layeringOption: go.LayeredDigraphLayering.LongestPathSink
       })
     });
 
