@@ -42,6 +42,9 @@ interface AppState {
   x: number;
   y: number;
   vals: number;
+
+  lhsStep: number;
+  rhsStep: number;
 }
 
 const x = 12;
@@ -93,7 +96,10 @@ class App extends React.Component<{}, AppState> {
 
       x: x,
       y: y,
-      vals: vals
+      vals: vals,
+
+      lhsStep: 1,
+      rhsStep: 1
     };
     this.handleDiagramEvent = this.handleDiagramEvent.bind(this);
     this.handleModelChange = this.handleModelChange.bind(this);
@@ -1009,7 +1015,7 @@ class App extends React.Component<{}, AppState> {
                   }
                 />
               </label>
-              <label>
+              <label style={{ marginLeft: "7rem" }}>
                 y:
                 <input
                   type="number"
@@ -1031,6 +1037,34 @@ class App extends React.Component<{}, AppState> {
                 />
               </label>
               */}
+              <br />
+              <label>
+                LHS:&nbsp;
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={this.state.lhsStep}
+                  onChange={(e) =>
+                    this.setState({ lhsStep: Number(e.target.value) })
+                  }
+                />
+                    <span style={{ marginLeft: "1rem" }}>{this.state.lhsStep}</span>
+
+              </label>
+              <label style={{ marginLeft: "5rem" }}>
+                RHS:&nbsp;
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={this.state.rhsStep}
+                  onChange={(e) =>
+                    this.setState({ rhsStep: Number(e.target.value) })
+                  }
+                />
+                    <span style={{ marginLeft: "1rem" }}>{this.state.rhsStep}</span>
+              </label>
             </div>
             <div className="lower-part">
               <LhsDiagramWrapper
