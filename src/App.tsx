@@ -27,8 +27,8 @@ interface AppState {
   currEdgeKey: number;
 
   tableNodes: tableNode[];
-  selectedTableNode: number | null;
-  sinkTableNode: number | null;
+  selectedTableNode: number | undefined;
+  sinkTableNode: number | undefined;
   sourceTableNodes: number[];
   tableEdges: tableEdge[];
 
@@ -79,8 +79,8 @@ class App extends React.Component<{}, AppState> {
       currEdgeKey: 0,
 
       tableNodes: newNodes,
-      selectedTableNode: null,
-      sinkTableNode: null,
+      selectedTableNode: undefined,
+      sinkTableNode: undefined,
       sourceTableNodes: [],
       tableEdges: [],
 
@@ -167,7 +167,15 @@ class App extends React.Component<{}, AppState> {
     if (e.modifiedNodeData) {
       return;
     }
-    const [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(this.state.nodeDataArray, updatedLinkDataArray, this.state.tableNodes);
+    const [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
+      this.updateDependencyNodeValues(
+        this.state.nodeDataArray,
+        updatedLinkDataArray,
+        this.state.tableNodes,
+        this.state.x,
+        this.state.y,
+        this.state.sinkTableNode
+      );
     this.setState({
       skipsDiagramUpdate: false,
       sourceTableNodes: updatedSourceTableNodes,
@@ -224,17 +232,19 @@ class App extends React.Component<{}, AppState> {
     return [sorted, reverseAdjacencyList];
   }
 
-  updateDependencyNodeValues(nodeDataArray: go.ObjectData[], linkDataArray: go.ObjectData[], tableNodes: tableNode[], sink?: number): [go.ObjectData[], tableNode[], number[]] {
+  updateDependencyNodeValues(
+    nodeDataArray: go.ObjectData[], 
+    linkDataArray: go.ObjectData[], 
+    tableNodes: tableNode[], 
+    x: number, y: number, sink?: number
+  ): [go.ObjectData[], tableNode[], number[]] {
     let dummyArray = [...nodeDataArray];
     let updatedNodeDataArray = [...nodeDataArray];
     let updatedLinkDataArray = [...linkDataArray];
     //let updatedTableNodes = [...tableNodes]
     let updatedTableNodes = tableNodes.map(node => ({ ...node, value: NaN }));
 
-    if (sink === undefined && this.state.sinkTableNode !== null) {
-      sink = this.state.sinkTableNode;
-    }
-    else if (sink === undefined) {
+    if (sink === undefined) {
       sink = 0;
     }
 
@@ -263,7 +273,7 @@ class App extends React.Component<{}, AppState> {
 
       for (let j = 0; j < orderedNodes.length; j++) {
         dummyArray = this.updateDependencyNodeFromDependencies(dummyArray, updatedTableNodes,
-          orderedNodes[j], offset, sink, reverseAdjacencyList.get(orderedNodes[j]));
+          orderedNodes[j], offset, x, y, sink, reverseAdjacencyList.get(orderedNodes[j]));
       }
       //if (true) continue;
 
@@ -302,7 +312,13 @@ class App extends React.Component<{}, AppState> {
     this.setState({ modelData: model });
   }
 
-  updateDependencyNodeFromDependencies(nodeDataArray: Array<go.ObjectData>, tableNodes: tableNode[], dKey: number, offset: number, sink: number, deps?: go.ObjectData[]) {
+  updateDependencyNodeFromDependencies(
+    nodeDataArray: Array<go.ObjectData>, 
+    tableNodes: tableNode[], 
+    dKey: number, offset: number, 
+    x: number, y: number, 
+    sink: number, deps?: go.ObjectData[]) 
+    {
     let updatedNodeDataArray = [...nodeDataArray];
     const index = nodeDataArray.findIndex((node) => node.key === dKey);
 
@@ -321,10 +337,9 @@ class App extends React.Component<{}, AppState> {
               [leftDep, rightDep] = [rightDep, leftDep];
             }
 
-            let newValueIndex = leftDep.nodeValue + this.state.x * rightDep.nodeValue;
+            let newValueIndex = leftDep.nodeValue + x * rightDep.nodeValue;
 
             if (newValueIndex >= 0 && newValueIndex < tableNodes.length) {
-              //              console.log('immutable - ', 'left:', leftDep, ' right:', rightDep, ' index:', newValueIndex, 'value:', tableNodes[newValueIndex].value);
               updatedNodeDataArray[parentId] = {
                 ...updatedNodeDataArray[parentId],
                 tableId: newValueIndex
@@ -334,8 +349,6 @@ class App extends React.Component<{}, AppState> {
                 nodeValue: tableNodes[newValueIndex].value
               };
             } else {
-              //              console.warn("newValueIndex out of bounds:", newValueIndex, "tableNodes length:", tableNodes.length);
-              //              console.warn('immutable - ', 'left:', leftDep, ' right:', rightDep, ' index:', newValueIndex, 'value:', NaN);
               updatedNodeDataArray[index] = {
                 ...updatedNodeDataArray[index],
                 nodeValue: NaN
@@ -345,10 +358,10 @@ class App extends React.Component<{}, AppState> {
         }
         else {
           if (updatedNodeDataArray[index].nodeName === "x") {
-            updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: (sink + offset) % this.state.x };
+            updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: (sink + offset) % x };
           }
           else if (updatedNodeDataArray[index].nodeName === "y") {
-            updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: Math.floor((sink + offset) / this.state.x) };
+            updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: Math.floor((sink + offset) / x) };
           }
         }
         /*
@@ -378,18 +391,18 @@ class App extends React.Component<{}, AppState> {
       }
       else {
         if (updatedNodeDataArray[index].nodeName === "x") {
-          const sinkX = sink % this.state.x;
-          const sinkY = Math.floor(sink / this.state.x);
+          const sinkX = sink % x;
+          const sinkY = Math.floor(sink / x);
           const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
-          const newX = (sinkX + sinkY * this.state.x + parent.tableOffset + offset) % this.state.x;
+          const newX = (sinkX + sinkY * x + parent.tableOffset + offset) % x;
           console.log('x - prev:', updatedNodeDataArray[index].nodeValue, ' newX:', newX);
           updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newX };
         }
         else if (updatedNodeDataArray[index].nodeName === "y") {
-          const sinkX = sink % this.state.x;
-          const sinkY = Math.floor(sink / this.state.x);
+          const sinkX = sink % x;
+          const sinkY = Math.floor(sink / x);
           const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
-          const newY = Math.floor((sinkX + sinkY * this.state.x + parent.tableOffset + offset) / this.state.x)
+          const newY = Math.floor((sinkX + sinkY * x + parent.tableOffset + offset) / x)
           console.log('y - prev:', updatedNodeDataArray[index].nodeValue, ' newY:', newY);
           updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newY };
         }
@@ -432,8 +445,8 @@ class App extends React.Component<{}, AppState> {
         }
 
         if (ifDep) {
-          
-          let newValue = (ifDep.nodeValue !== 0) ? ((thenDep) ? thenDep.nodeValue : NaN): ((elseDep) ? elseDep.nodeValue : NaN);
+
+          let newValue = (ifDep.nodeValue !== 0) ? ((thenDep) ? thenDep.nodeValue : NaN) : ((elseDep) ? elseDep.nodeValue : NaN);
           console.log('conditional - ', 'if:', ifDep, ' then:', thenDep, ' else:', elseDep, ' newValue:', newValue);
           updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newValue };
         }
@@ -545,7 +558,7 @@ class App extends React.Component<{}, AppState> {
   }
 
   handleSetSinkButton() {
-    if (this.state.selectedTableNode === null ||
+    if (this.state.selectedTableNode === undefined ||
       this.state.selectedTableNode === this.state.sinkTableNode) {
       /*
       const updatedNodeDataArray = this.updateDependencyNodeWithTableId(this.state.nodeDataArray, 0);
@@ -555,7 +568,7 @@ class App extends React.Component<{}, AppState> {
       });
       */
     }
-    else if (this.state.sinkTableNode !== null) {
+    else if (this.state.sinkTableNode !== undefined) {
       const offset = this.state.selectedTableNode - this.state.sinkTableNode;
 
       for (let i = 0; i < this.state.sourceTableNodes.length; i++) {
@@ -582,13 +595,15 @@ class App extends React.Component<{}, AppState> {
         updatedNodeDataArray,
         this.state.linkDataArray,
         updatedTableNodes,
+        this.state.x,
+        this.state.y,
         this.state.selectedTableNode
       );
       this.setState({
         tableNodes: updatedTableNodes,
         nodeDataArray: updatedNodeDataArray,
         sourceTableNodes: updatedSourceTableNodes,
-        selectedTableNode: null,
+        selectedTableNode: undefined,
         sinkTableNode: this.state.selectedTableNode
       });
     }
@@ -608,20 +623,22 @@ class App extends React.Component<{}, AppState> {
         updatedNodeDataArray,
         this.state.linkDataArray,
         updatedTableNodes,
+        this.state.x,
+        this.state.y,
         this.state.selectedTableNode
       );
       this.setState({
         tableNodes: updatedTableNodes,
         nodeDataArray: updatedNodeDataArray,
         sourceTableNodes: updatedSourceTableNodes,
-        selectedTableNode: null,
+        selectedTableNode: undefined,
         sinkTableNode: this.state.selectedTableNode
       });
     }
   }
 
   handleAddSourceButton() {
-    if (this.state.selectedTableNode === null ||
+    if (this.state.selectedTableNode === undefined ||
       this.state.selectedTableNode === this.state.sinkTableNode ||
       this.state.sourceTableNodes.some(source => source === this.state.selectedTableNode)) {
 
@@ -629,7 +646,7 @@ class App extends React.Component<{}, AppState> {
     else {
       const newSource = this.state.selectedTableNode;
       const newKey = this.state.currNodeKey + 1;
-      const off = newSource - ((this.state.sinkTableNode === null) ? 0 : this.state.sinkTableNode);
+      const off = newSource - ((this.state.sinkTableNode === undefined) ? 0 : this.state.sinkTableNode);
       const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
         { text: 'Source', tableId: newSource, tableOffset: off, isGroup: true, type: SOURCE },
         { nodeName: 'x', nodeValue: newSource % this.state.x, group: newKey, type: VARIABLE, category: "mutable" },
@@ -643,7 +660,7 @@ class App extends React.Component<{}, AppState> {
       ]);
 
       this.setState({
-        selectedTableNode: null,
+        selectedTableNode: undefined,
         currNodeKey: this.state.currNodeKey + 4,
         currEdgeKey: this.state.currEdgeKey - 2,
         nodeDataArray: updatedNodeDataArray,
@@ -755,7 +772,7 @@ class App extends React.Component<{}, AppState> {
 
   setSelectedNode(node: tableNode) {
     if (this.state.selectedTableNode === node.id) {
-      this.setState({ selectedTableNode: null });
+      this.setState({ selectedTableNode: undefined });
     } else {
       this.setState({ selectedTableNode: node.id });
     }
@@ -790,7 +807,15 @@ class App extends React.Component<{}, AppState> {
       updatedTableNodes[this.state.lockDialogNode.id].locked = this.state.lockDialogLock;
     }
 
-    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(this.state.nodeDataArray, this.state.linkDataArray, updatedTableNodes);
+    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
+      this.updateDependencyNodeValues(
+        this.state.nodeDataArray,
+        this.state.linkDataArray,
+        updatedTableNodes,
+        this.state.x,
+        this.state.y,
+        this.state.sinkTableNode
+      );
     this.setState({
       nodeDataArray: updatedNodeDataArray,
       tableNodes: updatedTableNodes,
@@ -801,98 +826,127 @@ class App extends React.Component<{}, AppState> {
   };
 
   updateTableLengthY(nY: number) {
-    if (this.state.sinkTableNode !== null && (this.state.x * nY < this.state.sinkTableNode || this.state.sourceTableNodes.some(source => this.state.x * nY < source))) {
-      console.warn("Table size is too small for the current sink/source nodes");
-      return;
-    }
+    this.setState(
+      produce((draft: AppState) => {
+        if (
+          draft.sinkTableNode !== undefined &&
+          (draft.x * nY < draft.sinkTableNode ||
+            draft.sourceTableNodes.some(source => draft.x * nY < source))
+        ) {
+          console.warn("Table size is too small for the current sink/source nodes");
+          return;
+        }
 
-    let updatedTableNodes: tableNode[] = [];
-    for (let i = 0; i < this.state.x * nY; i++) {
-      if (i < this.state.tableNodes.length) {
-        updatedTableNodes.push(this.state.tableNodes[i]);
-      }
-      else {
-        updatedTableNodes.push({ id: i, text: `Node ${i}`, connections: [], value: 0, locked: false });
-      }
-    }
+        let updatedTableNodes: tableNode[] = [];
+        for (let i = 0; i < draft.x * nY; i++) {
+          if (i < draft.tableNodes.length) {
+            updatedTableNodes.push(draft.tableNodes[i]);
+          } else {
+            updatedTableNodes.push({ id: i, text: `Node ${i}`, connections: [], value: 0, locked: false });
+          }
+        }
 
-    this.setState({
-      y: nY,
-    });
+        draft.y = nY;
 
-    let updatedNodeDataArray = this.state.nodeDataArray;
-    let updatedSourceTableNodes = this.state.sourceTableNodes;
+        let updatedNodeDataArray: go.ObjectData[] = [];
+        let updatedSourceTableNodes: number[] = [];
 
-    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(updatedNodeDataArray, this.state.linkDataArray, updatedTableNodes);
-
-    this.setState({
-      tableNodes: updatedTableNodes,
-      nodeDataArray: updatedNodeDataArray,
-      sourceTableNodes: updatedSourceTableNodes,
-    });
+        [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
+          this.updateDependencyNodeValues(
+            draft.nodeDataArray,
+            draft.linkDataArray,
+            updatedTableNodes,
+            draft.x,
+            nY,
+            draft.sinkTableNode
+          );
+        draft.nodeDataArray = updatedNodeDataArray;
+        draft.tableNodes = updatedTableNodes;
+        draft.sourceTableNodes = updatedSourceTableNodes;
+      })
+    );
   }
 
   updateTableLengthX(nX: number) {
-    if (this.state.sinkTableNode !== null && (nX * this.state.y < this.state.sinkTableNode || this.state.sourceTableNodes.some(source => nX * this.state.y < source))) {
-      console.warn("Table size is too small for the current sink/source nodes");
-      return;
-    }
-
-    let updatedTableNodes: tableNode[] = [];
-    for (let i = 0; i < nX * this.state.y; i++) {
-      if (i < this.state.tableNodes.length) {
-        updatedTableNodes.push(this.state.tableNodes[i]);
-      }
-      else {
-        updatedTableNodes.push({ id: i, text: `Node ${i}`, connections: [], value: 0, locked: false });
-      }
-    }
-    let updatedNodeDataArray: Array<go.ObjectData> = [];
-    const updatedSinkTableNode = (this.state.sinkTableNode === null) ? null : this.state.nodeDataArray[1].nodeValue + this.state.nodeDataArray[2].nodeValue * nX;
-
-    for (let i = 0; i < this.state.nodeDataArray.length; i++) {
-      if (this.state.nodeDataArray[i].tableId !== undefined) {
-        const oldX = this.state.nodeDataArray[i + 1].nodeValue;
-        const oldY = this.state.nodeDataArray[i + 2].nodeValue;
-
-        if (i === 0) {
-          updatedNodeDataArray.push({
-            ...this.state.nodeDataArray[i],
-            tableId: oldX + oldY * nX
-          });
-          console.log('sink:', oldX + oldY * nX);
+    this.setState(
+      produce((draft: AppState) => {
+        if (
+          draft.sinkTableNode !== undefined &&
+          (nX <= draft.sinkTableNode % draft.x ||
+            draft.sourceTableNodes.some(source => nX <= source % draft.x))
+        ) {
+          console.warn("Table size is too small for the current sink/source nodes");
+          return;
         }
-        else {
-          const oldId = this.state.nodeDataArray[i].tableId;
-          const oldOffset = this.state.nodeDataArray[i].tableOffset;
 
-          updatedNodeDataArray.push({
-            ...this.state.nodeDataArray[i],
-            tableId: oldX + oldY * nX,
-            tableOffset: oldOffset - Math.floor(updatedSinkTableNode / nX) + oldY
-          });
-          console.log('source:', oldX + oldY * nX);
-          console.log('offset:', oldOffset - Math.floor(updatedSinkTableNode / nX) + oldY);
+        let updatedTableNodes: tableNode[] = [];
+        for (let i = 0; i < nX * draft.y; i++) {
+          if (i < draft.tableNodes.length) {
+            updatedTableNodes.push(draft.tableNodes[i]);
+          } else {
+            updatedTableNodes.push({
+              id: i,
+              text: `Node ${i}`,
+              connections: [],
+              value: 0,
+              locked: false,
+            });
+          }
         }
-      }
-      else {
-        updatedNodeDataArray.push(this.state.nodeDataArray[i]);
-      }
-    }
 
-    this.setState({
-      x: nX,
-    });
+        let updatedSinkTableNode =
+          (draft.sinkTableNode === undefined)
+            ? undefined
+            : draft.nodeDataArray[1].nodeValue + draft.nodeDataArray[2].nodeValue * nX;
 
-    let updatedSourceTableNodes = this.state.sourceTableNodes;
-    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(updatedNodeDataArray, this.state.linkDataArray, updatedTableNodes, updatedSinkTableNode);
+        let updatedNodeDataArray: Array<go.ObjectData> = [];
+        for (let i = 0; i < draft.nodeDataArray.length; i++) {
+          if (draft.nodeDataArray[i].tableId !== undefined) {
+            const oldX = draft.nodeDataArray[i + 1].nodeValue;
+            const oldY = draft.nodeDataArray[i + 2].nodeValue;
 
-    this.setState({
-      tableNodes: updatedTableNodes,
-      nodeDataArray: updatedNodeDataArray,
-      sourceTableNodes: updatedSourceTableNodes,
-      sinkTableNode: updatedSinkTableNode,
-    });
+            if (i === 0) {
+              updatedNodeDataArray.push({
+                ...draft.nodeDataArray[i],
+                tableId: oldX + oldY * nX,
+              });
+              console.log("sink:", oldX + oldY * nX);
+            } else {
+              const oldOffset = draft.nodeDataArray[i].tableOffset;
+              updatedNodeDataArray.push({
+                ...draft.nodeDataArray[i],
+                tableId: oldX + oldY * nX,
+                tableOffset: oldOffset - 
+                  (Math.floor((updatedSinkTableNode ?? 0) / nX) - oldY)
+                  * ((nX < draft.x) ? -1 : 1),
+              });
+              console.log("source:", oldX + oldY * nX);
+              console.log("offset:", oldOffset - Math.floor((updatedSinkTableNode ?? 0) / nX) + oldY);
+            }
+          } else {
+            updatedNodeDataArray.push(draft.nodeDataArray[i]);
+          }
+        }
+
+        draft.x = nX;
+
+        let updatedSourceTableNodes: number[] = draft.sourceTableNodes;
+        [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
+          this.updateDependencyNodeValues(
+            updatedNodeDataArray,
+            draft.linkDataArray,
+            updatedTableNodes,
+            draft.x,
+            draft.y,
+            updatedSinkTableNode
+          );
+
+        draft.nodeDataArray = updatedNodeDataArray;
+        draft.tableNodes = updatedTableNodes;
+        draft.sourceTableNodes = updatedSourceTableNodes;
+        draft.sinkTableNode = updatedSinkTableNode;
+      })
+    );
   }
 
   render() {
