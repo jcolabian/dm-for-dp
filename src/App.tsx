@@ -45,6 +45,8 @@ interface AppState {
 
   lhsStep: number;
   rhsStep: number;
+
+  consts: number[];
 }
 
 const x = 12;
@@ -98,8 +100,10 @@ class App extends React.Component<{}, AppState> {
       y: y,
       vals: vals,
 
-      lhsStep: 4,
-      rhsStep: newNodes.length
+      lhsStep: 1,
+      rhsStep: newNodes.length,
+
+      consts: [],
     };
     this.handleDiagramEvent = this.handleDiagramEvent.bind(this);
     this.handleModelChange = this.handleModelChange.bind(this);
@@ -313,9 +317,14 @@ class App extends React.Component<{}, AppState> {
       }
     }
 
-    for (let j = 0; j < orderedNodes.length; j++) {
+    for (let i = 0, j = 0; i < orderedNodes.length; i++) {
+      const currNode = dummyArray.find((node) => node.key === orderedNodes[i]);
+      const valid = j < lhsStep || currNode?.isGroup || currNode?.category === "immutable";
+      if (valid && !(currNode?.isGroup || currNode?.category === "immutable")) {
+        j++;
+      }
       dummyArray = this.updateDependencyNodeFromDependencies(dummyArray, updatedTableNodes,
-        orderedNodes[j], 0, j<lhsStep, x, y, sink, reverseAdjacencyList.get(orderedNodes[j]));
+        orderedNodes[i], 0, valid, x, y, sink, reverseAdjacencyList.get(orderedNodes[i]));
     }
     updatedNodeDataArray = [...dummyArray];
 
@@ -696,7 +705,7 @@ class App extends React.Component<{}, AppState> {
         nodeDataArray: updatedNodeDataArray,
         linkDataArray: updatedLinkDataArray,
         sourceTableNodes: [...this.state.sourceTableNodes, newSource],
-        lhsStep: this.state.lhsStep + 4,
+        lhsStep: this.state.lhsStep + 2,
       });
     }
   }
@@ -739,16 +748,24 @@ class App extends React.Component<{}, AppState> {
         updatedSourceTableNodes = updatedSourceTableNodes.filter(source => source !== targetNode.tableId);
       }
 
+      let updateConsts: number[] = [...this.state.consts];
+      if (this.state.consts.some(key => key === targetNode.key)) {
+        updateConsts = updateConsts.filter(key => key !== targetNode.key);
+      }
+
       const updatedLinkDataArray: Array<go.ObjectData> = this.state.linkDataArray.filter(link =>
         removed.includes(link.from) === false && removed.includes(link.to) === false
       );
+
+      const newLhsMax = updatedNodeDataArray.length - 3 - updatedSourceTableNodes.length * 2 - updateConsts.length
 
       this.setState({
         selectedKey: null,
         sourceTableNodes: updatedSourceTableNodes,
         nodeDataArray: updatedNodeDataArray,
         linkDataArray: updatedLinkDataArray,
-        lhsStep: this.state.lhsStep - removed.length,
+        consts: updateConsts,
+        lhsStep: Math.min(this.state.lhsStep, newLhsMax),
       });
     }
   }
@@ -791,7 +808,7 @@ class App extends React.Component<{}, AppState> {
       nodeDataArray: updatedNodeDataArray,
       currNodeKey: this.state.currNodeKey + 1,
       constDialogOpen: false,
-      lhsStep: this.state.lhsStep + 1,
+      consts: this.state.consts.concat(newKeys),
     });
   }
 
@@ -1096,8 +1113,9 @@ class App extends React.Component<{}, AppState> {
                 LHS:&nbsp;
                 <input
                   type="range"
-                  min="1"
-                  max={this.state.nodeDataArray.length}
+                  min="0"
+                  max={this.state.nodeDataArray.length - 3 - this.state.sourceTableNodes.length * 2 - this.state.consts.length}
+                  // number of nodes - sink and its x/y - each source and its out - consts
                   value={this.state.lhsStep}
                   onChange={(e) =>
                     this.updateStep(Number(e.target.value), this.state.rhsStep)
@@ -1110,7 +1128,7 @@ class App extends React.Component<{}, AppState> {
                 RHS:&nbsp;
                 <input
                   type="range"
-                  min="1"
+                  min="0"
                   max={this.state.tableNodes.length}
                   value={this.state.rhsStep}
                   onChange={(e) =>
