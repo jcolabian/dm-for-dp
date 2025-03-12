@@ -264,29 +264,36 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
 
     diagram.linkTemplateMap.add("hidden", $(go.Link));
 
-    diagram.groupTemplate = $(
-      go.Group, "Spot",
-      {
-        layout: $(go.GridLayout, { wrappingColumn: 5, spacing: new go.Size(10, 10) })
-      },
-      $(go.Panel, "Auto",
-        { name: "BODY" },
-        $(go.Shape, "RoundedRectangle",
-          { fill: "rgba(128,128,128,0.2)", stroke: "gray", strokeWidth: 2 }
-        ),
-        $(go.Placeholder, { padding: 10 })
-      ),
-      $(go.TextBlock,
+    const makeGroupTemplate = (color: string): go.Group => {
+      return $(go.Group, "Spot",
         {
-          alignment: new go.Spot(0, 0, 0, -10),
-          alignmentFocus: go.Spot.Left,
-          font: "bold 16px Segoe UI, sans-serif",
-          stroke: "#000000",
-          margin: 0
+          layout: $(go.GridLayout, { wrappingColumn: 5, spacing: new go.Size(10, 10) })
         },
-        new go.Binding("text", "text")
-      )
-    );
+        $(go.Panel, "Auto",
+          { name: "BODY" },
+          $(go.Shape, "RoundedRectangle",
+            { fill: color, stroke: "gray", strokeWidth: 2 }
+          ),
+          $(go.Placeholder, { padding: 10 })
+        ),
+        $(go.TextBlock,
+          {
+            alignment: new go.Spot(0, 0, 0, -10),
+            alignmentFocus: go.Spot.Left,
+            font: "bold 16px Segoe UI, sans-serif",
+            stroke: "#000000",
+            margin: 0
+          },
+          new go.Binding("text", "text")
+        )
+      );
+    };
+
+    diagram.groupTemplate = makeGroupTemplate("rgba(128,128,128,0.2)");
+
+    diagram.groupTemplateMap.add("source", makeGroupTemplate("rgba(0,128,0,0.3)"));
+
+    diagram.groupTemplateMap.add("sink", makeGroupTemplate("rgba(128,0,0,0.3)"));
 
     diagram.validCycle = go.CycleMode.NotDirected;
 

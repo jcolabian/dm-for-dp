@@ -84,7 +84,7 @@ class App extends React.Component<{}, AppState> {
     }
     this.state = {
       nodeDataArray: [
-        { key: 0, text: 'Sink', tableX: -1, tableY: -1, isGroup: true, type: SINK },
+        { key: 0, text: 'Output', tableX: -1, tableY: -1, isGroup: true, type: SINK, category: "sink" },
         { key: 1, nodeName: 'x', nodeValue: NaN, group: 0, type: VARIABLE, category: "immutable" },
         { key: 2, nodeName: 'y', nodeValue: NaN, group: 0, type: VARIABLE, category: "immutable" },
         { key: 3, nodeName: 'val1', nodeValue: NaN, group: 0, type: VARIABLE, category: "out" },
@@ -117,7 +117,7 @@ class App extends React.Component<{}, AppState> {
       vals: vals,
 
       lhsStep: 1,
-      rhsStep: newNodes.length,
+      rhsStep: x * y,
 
       consts: [],
       leftWidth: 40,
@@ -419,14 +419,15 @@ class App extends React.Component<{}, AppState> {
               [leftDep, rightDep] = [rightDep, leftDep];
             }
 
+            updatedNodeDataArray[parentId] = {
+              ...updatedNodeDataArray[parentId],
+              tableX: leftDep.nodeValue,
+              tableY: rightDep.nodeValue,
+              //                tableOffsetX: offsetX,
+              //                tableOffsetY: offsetY
+            };
+
             if (rightDep.nodeValue >= 0 && rightDep.nodeValue < y && leftDep.nodeValue >= 0 && leftDep.nodeValue < x) {
-              updatedNodeDataArray[parentId] = {
-                ...updatedNodeDataArray[parentId],
-                tableX: leftDep.nodeValue,
-                tableY: rightDep.nodeValue,
-                //                tableOffsetX: offsetX,
-                //                tableOffsetY: offsetY
-              };
               updatedNodeDataArray[index] = {
                 ...updatedNodeDataArray[index],
                 nodeValue: tableNodes[rightDep.nodeValue][leftDep.nodeValue].value
@@ -651,6 +652,7 @@ class App extends React.Component<{}, AppState> {
       const offsetX = this.state.selectedTableNode.x - this.state.sinkTableNode.x;
       const offsetY = this.state.selectedTableNode.y - this.state.sinkTableNode.y;
 
+      /*
       for (let i = 0; i < this.state.sourceTableNodes.length; i++) {
         const targetX = this.state.sourceTableNodes[i].x + offsetX;
         const targetY = this.state.sourceTableNodes[i].y + offsetY;
@@ -660,6 +662,7 @@ class App extends React.Component<{}, AppState> {
           return;
         }
       }
+      */
 
       let updatedNodeDataArray = this.state.nodeDataArray;
       let updatedTableNodes = this.state.tableNodes;
@@ -732,7 +735,7 @@ class App extends React.Component<{}, AppState> {
       const offX = newSource.x - ((this.state.sinkTableNode === undefined) ? 0 : this.state.sinkTableNode.x);
       const offY = newSource.y - ((this.state.sinkTableNode === undefined) ? 0 : this.state.sinkTableNode.y);
       const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
-        { text: 'Source', tableX: newSource.x, tableY: newSource.y, tableOffsetX: offX, tableOffsetY: offY, isGroup: true, type: SOURCE },
+        { text: 'Input', tableX: newSource.x, tableY: newSource.y, tableOffsetX: offX, tableOffsetY: offY, isGroup: true, type: SOURCE, category: "source" },
         { nodeName: 'x', nodeValue: newSource.x, group: newKey, type: VARIABLE, category: "mutable" },
         { nodeName: 'y', nodeValue: newSource.y, group: newKey, type: VARIABLE, category: "mutable" },
         { nodeName: 'val1', nodeValue: this.state.tableNodes[newSource.y][newSource.x].value, group: newKey, type: VARIABLE, category: "immutable" },
@@ -1127,12 +1130,12 @@ class App extends React.Component<{}, AppState> {
         <div className="split-view">
           <div className="left-section" style={{ width: `${this.state.leftWidth}%` }}>
             <div className="upper-part">
-              <button onClick={this.handleSetSinkButton}>set Sink</button>
-              <button onClick={this.handleAddSourceButton}>add Source</button>
+              <button onClick={this.handleSetSinkButton}>Set Sink</button>
+              <button onClick={this.handleAddSourceButton}>Add Source</button>
               <button onClick={this.handleConstantButton}>Constant</button>
               <button onClick={this.handleDeleteButton}>Delete</button>
-              <button style={{ marginLeft: "8rem" }} onClick={() => this.setState({leftWidth: 99})}>Hide RHS</button>
-              <button onClick={() => this.setState({leftWidth: 40})}>Show RHS</button>
+              <button style={{ marginLeft: "8rem" }} onClick={() => this.setState({ leftWidth: 99 })}>Hide RHS</button>
+              <button onClick={() => this.setState({ leftWidth: 40 })}>Show RHS</button>
               <br />
               <button onClick={() => this.addOperation('Addition')}>Addition</button>
               <button onClick={() => this.addOperation('Subtraction')}>Subtraction</button>
@@ -1202,7 +1205,7 @@ class App extends React.Component<{}, AppState> {
                 <input
                   type="range"
                   min="0"
-                  max={this.state.tableNodes.length}
+                  max={this.state.x * this.state.y}
                   value={this.state.rhsStep}
                   onChange={(e) =>
                     this.updateStep(this.state.lhsStep, Number(e.target.value))
