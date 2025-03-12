@@ -1156,6 +1156,7 @@ class App extends React.Component<{}, AppState> {
                 x:
                 <input
                   type="number"
+                  min="1"
                   value={this.state.x}
                   onChange={(e) =>
                     this.updateTableLengthX(Number(e.target.value))
@@ -1166,6 +1167,7 @@ class App extends React.Component<{}, AppState> {
                 y:
                 <input
                   type="number"
+                  min="1"
                   value={this.state.y}
                   onChange={(e) =>
                     this.updateTableLengthY(Number(e.target.value))
