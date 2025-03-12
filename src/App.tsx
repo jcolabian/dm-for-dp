@@ -55,6 +55,7 @@ interface AppState {
   rhsStep: number;
 
   consts: number[];
+  leftWidth: number; // percent of width for left section
 }
 
 const x = 12;
@@ -119,6 +120,7 @@ class App extends React.Component<{}, AppState> {
       rhsStep: newNodes.length,
 
       consts: [],
+      leftWidth: 40,
     };
     this.handleDiagramEvent = this.handleDiagramEvent.bind(this);
     this.handleModelChange = this.handleModelChange.bind(this);
@@ -129,6 +131,32 @@ class App extends React.Component<{}, AppState> {
     this.handleDeleteButton = this.handleDeleteButton.bind(this);
     this.handleConstantButton = this.handleConstantButton.bind(this);
     this.handleConditionalButton = this.handleConditionalButton.bind(this);
+    this.handleMouseDown = this.handleMouseDown.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+    this.handleMouseUp = this.handleMouseUp.bind(this);
+  }
+
+  private isDragging = false;
+
+  handleMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    this.isDragging = true;
+    window.addEventListener("mousemove", this.handleMouseMove);
+    window.addEventListener("mouseup", this.handleMouseUp);
+  }
+
+  handleMouseMove(e: MouseEvent) {
+    if (!this.isDragging) return;
+    // Calculate new left width as percent:
+    let newLeftWidth = (e.clientX / window.innerWidth) * 100;
+    if (newLeftWidth < 40) newLeftWidth = 40;
+    if (newLeftWidth > 99) newLeftWidth = 99;
+    this.setState({ leftWidth: newLeftWidth });
+  }
+
+  handleMouseUp() {
+    this.isDragging = false;
+    window.removeEventListener("mousemove", this.handleMouseMove);
+    window.removeEventListener("mouseup", this.handleMouseUp);
   }
 
   handleDiagramEvent(e: go.DiagramEvent) {
@@ -396,8 +424,8 @@ class App extends React.Component<{}, AppState> {
                 ...updatedNodeDataArray[parentId],
                 tableX: leftDep.nodeValue,
                 tableY: rightDep.nodeValue,
-//                tableOffsetX: offsetX,
-//                tableOffsetY: offsetY
+                //                tableOffsetX: offsetX,
+                //                tableOffsetY: offsetY
               };
               updatedNodeDataArray[index] = {
                 ...updatedNodeDataArray[index],
@@ -1097,12 +1125,14 @@ class App extends React.Component<{}, AppState> {
     return (
       <div className="App">
         <div className="split-view">
-          <div className="left-section">
+          <div className="left-section" style={{ width: `${this.state.leftWidth}%` }}>
             <div className="upper-part">
               <button onClick={this.handleSetSinkButton}>set Sink</button>
               <button onClick={this.handleAddSourceButton}>add Source</button>
               <button onClick={this.handleConstantButton}>Constant</button>
               <button onClick={this.handleDeleteButton}>Delete</button>
+              <button style={{ marginLeft: "8rem" }} onClick={() => this.setState({leftWidth: 99})}>Hide RHS</button>
+              <button onClick={() => this.setState({leftWidth: 40})}>Show RHS</button>
               <br />
               <button onClick={() => this.addOperation('Addition')}>Addition</button>
               <button onClick={() => this.addOperation('Subtraction')}>Subtraction</button>
@@ -1153,7 +1183,7 @@ class App extends React.Component<{}, AppState> {
               */}
               <br />
               <label>
-                LHS:&nbsp;
+                Left Steps:&nbsp;
                 <input
                   type="range"
                   min="0"
@@ -1167,8 +1197,8 @@ class App extends React.Component<{}, AppState> {
                 <span style={{ marginLeft: "1rem" }}>{this.state.lhsStep}</span>
 
               </label>
-              <label style={{ marginLeft: "5rem" }}>
-                RHS:&nbsp;
+              <label style={{ marginLeft: "2rem" }}>
+                Right Steps:&nbsp;
                 <input
                   type="range"
                   min="0"
@@ -1192,8 +1222,12 @@ class App extends React.Component<{}, AppState> {
               />
             </div>
           </div>
-
-          <div className="right-section">
+          <div
+            className="resizer"
+            onMouseDown={this.handleMouseDown}
+            style={{ left: `${this.state.leftWidth}%` }}
+          />
+          <div className="right-section" /* style={{ width: `${100 - this.state.leftWidth}%` }} */ >
             <div className="graph-area">
               {/*
               {this.state.tableEdges.map((edge, index) => (
