@@ -224,7 +224,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
               font: "12px Segoe UI, sans-serif",
               stroke: "#000000"
             },
-            new go.Binding("text", "nodeValue")
+            new go.Binding("text", "nodeText")
           )
         ));
       const tops = makePort(toCount);

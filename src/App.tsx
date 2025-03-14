@@ -85,9 +85,9 @@ class App extends React.Component<{}, AppState> {
     this.state = {
       nodeDataArray: [
         { key: 0, text: 'Output', tableX: -1, tableY: -1, isGroup: true, type: SINK, category: "sink" },
-        { key: 1, nodeName: 'x', nodeValue: NaN, group: 0, type: VARIABLE, category: "immutable" },
-        { key: 2, nodeName: 'y', nodeValue: NaN, group: 0, type: VARIABLE, category: "immutable" },
-        { key: 3, nodeName: 'val1', nodeValue: NaN, group: 0, type: VARIABLE, category: "out" },
+        { key: 1, nodeName: 'x', nodeValue: NaN, nodeText: "NaN", group: 0, type: VARIABLE, category: "immutable" },
+        { key: 2, nodeName: 'y', nodeValue: NaN, nodeText: "NaN", group: 0, type: VARIABLE, category: "immutable" },
+        { key: 3, nodeName: 'val1', nodeValue: NaN, nodeText: "NaN", group: 0, type: VARIABLE, category: "out" },
       ],
       linkDataArray: [
       ],
@@ -406,7 +406,11 @@ class App extends React.Component<{}, AppState> {
       return updatedNodeDataArray;
     }
     else if (valid === false) {
-      updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: NaN };
+      updatedNodeDataArray[index] = {
+        ...updatedNodeDataArray[index], 
+        nodeValue: NaN, 
+        nodeText: "NaN"
+      };
     }
     else if (updatedNodeDataArray[index].category === "immutable") {
       if (nodeDataArray[index].group !== undefined) {
@@ -430,22 +434,32 @@ class App extends React.Component<{}, AppState> {
             if (rightDep.nodeValue >= 0 && rightDep.nodeValue < y && leftDep.nodeValue >= 0 && leftDep.nodeValue < x) {
               updatedNodeDataArray[index] = {
                 ...updatedNodeDataArray[index],
-                nodeValue: tableNodes[rightDep.nodeValue][leftDep.nodeValue].value
+                nodeValue: tableNodes[rightDep.nodeValue][leftDep.nodeValue].value,
+                nodeText: this.formatValue(tableNodes[rightDep.nodeValue][leftDep.nodeValue].value)
               };
             } else {
               updatedNodeDataArray[index] = {
                 ...updatedNodeDataArray[index],
-                nodeValue: NaN
+                nodeValue: NaN,
+                nodeText: "NaN"
               };
             }
           }
         }
         else {
           if (updatedNodeDataArray[index].nodeName === "x") {
-            updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: sink.x + offsetX };
+            updatedNodeDataArray[index] = {
+              ...updatedNodeDataArray[index], 
+              nodeValue: sink.x + offsetX,
+              nodeText: this.formatValue(sink.x + offsetX)
+            };
           }
           else if (updatedNodeDataArray[index].nodeName === "y") {
-            updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: sink.y + offsetY };
+            updatedNodeDataArray[index] = {
+              ...updatedNodeDataArray[index], 
+              nodeValue: sink.y + offsetY,
+              nodeText: this.formatValue(sink.y + offsetY)
+            };
           }
         }
         /*
@@ -466,10 +480,18 @@ class App extends React.Component<{}, AppState> {
         if (dep) {
           //          console.log('out/mutable - dep:', dep.value);
           if (updatedNodeDataArray[index].nodeName === "Not") {
-            updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: (dep.nodeValue === 0) ? 1 : 0 };
+            updatedNodeDataArray[index] = {
+              ...updatedNodeDataArray[index], 
+              nodeValue: (dep.nodeValue === 0) ? 1 : 0,
+              nodeText: this.formatValue((dep.nodeValue === 0) ? 1 : 0)
+            };
           }
           else {
-            updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: dep.nodeValue };
+            updatedNodeDataArray[index] = {
+              ...updatedNodeDataArray[index],
+              nodeValue: dep.nodeValue,
+              nodeText: this.formatValue(dep.nodeValue)
+            };
           }
         }
       }
@@ -478,13 +500,21 @@ class App extends React.Component<{}, AppState> {
           const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
           const newX = sink.x + parent.tableOffsetX + offsetX;
           console.log('x - prev:', updatedNodeDataArray[index].nodeValue, ' newX:', newX);
-          updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newX };
+          updatedNodeDataArray[index] = {
+            ...updatedNodeDataArray[index], 
+            nodeValue: newX,
+            nodeText: this.formatValue(newX)
+          };
         }
         else if (updatedNodeDataArray[index].nodeName === "y") {
           const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
           const newY = sink.y + parent.tableOffsetY + offsetY;
           console.log('y - prev:', updatedNodeDataArray[index].nodeValue, ' newY:', newY);
-          updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newY };
+          updatedNodeDataArray[index] = {
+            ...updatedNodeDataArray[index],
+            nodeValue: newY,
+            nodeText: this.formatValue(newY)
+          };
         }
       }
     }
@@ -498,11 +528,19 @@ class App extends React.Component<{}, AppState> {
           }
           let newValue = this.executeOperation(nodeDataArray[index].nodeName, leftDep.nodeValue, rightDep.nodeValue);
           //          console.log('operation - ', 'left:', leftDep, ' right:', rightDep, ' newValue:', newValue);
-          updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newValue };
+          updatedNodeDataArray[index] = {
+            ...updatedNodeDataArray[index], 
+            nodeValue: newValue,
+            nodeText: this.formatValue(newValue)
+          };
         }
       }
       else {
-        updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: NaN };
+        updatedNodeDataArray[index] = {
+          ...updatedNodeDataArray[index], 
+          nodeValue: NaN,
+          nodeText: "NaN"
+        };
       }
     }
     else if (updatedNodeDataArray[index].category === "conditional") {
@@ -528,7 +566,11 @@ class App extends React.Component<{}, AppState> {
 
           let newValue = (ifDep.nodeValue !== 0) ? ((thenDep) ? thenDep.nodeValue : NaN) : ((elseDep) ? elseDep.nodeValue : NaN);
           console.log('conditional - ', 'if:', ifDep, ' then:', thenDep, ' else:', elseDep, ' newValue:', newValue);
-          updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: newValue };
+          updatedNodeDataArray[index] = {
+            ...updatedNodeDataArray[index], 
+            nodeValue: newValue,
+            nodeText: this.formatValue(newValue)
+          };
         }
       }
     }
@@ -547,13 +589,25 @@ class App extends React.Component<{}, AppState> {
           return { ...node, tableX: tNode.x, tableY: tNode.y };
         }
         else if (node.key === dKey + 1) {
-          return { ...node, nodeValue: tNode.x };
+          return {
+            ...node, 
+            nodeValue: tNode.x,
+            nodeText: this.formatValue(tNode.x)
+          };
         }
         else if (node.key === dKey + 2) {
-          return { ...node, nodeValue: tNode.y };
+          return {
+            ...node,
+            nodeValue: tNode.y,
+            nodeText: this.formatValue(tNode.y)
+          };
         }
         else if (node.key === dKey + 3) {
-          return { ...node, nodeValue: tNode.value };
+          return {
+            ...node,
+            nodeValue: tNode.value,
+            nodeText: this.formatValue(tNode.value)
+          };
         }
         return node;
       });
@@ -564,13 +618,24 @@ class App extends React.Component<{}, AppState> {
           return { ...node, tableX: -1, tableY: -1 };
         }
         else if (node.key === dKey + 1) {
-          return { ...node, nodeValue: NaN };
+          return {
+            ...node,
+            nodeValue: NaN,
+            nodeText: "NaN"
+          };
         }
         else if (node.key === dKey + 2) {
-          return { ...node, nodeValue: NaN };
+          return {
+            ...node,
+            nodeValue: NaN,
+            nodeText: "NaN"};
         }
         else if (node.key === dKey + 3) {
-          return { ...node, nodeValue: NaN };
+          return {
+            ...node,
+            nodeValue: NaN,
+            nodeText: "NaN"
+          };
         }
         return node;
       });
@@ -735,10 +800,36 @@ class App extends React.Component<{}, AppState> {
       const offX = newSource.x - ((this.state.sinkTableNode === undefined) ? 0 : this.state.sinkTableNode.x);
       const offY = newSource.y - ((this.state.sinkTableNode === undefined) ? 0 : this.state.sinkTableNode.y);
       const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
-        { text: 'Input', tableX: newSource.x, tableY: newSource.y, tableOffsetX: offX, tableOffsetY: offY, isGroup: true, type: SOURCE, category: "source" },
-        { nodeName: 'x', nodeValue: newSource.x, group: newKey, type: VARIABLE, category: "mutable" },
-        { nodeName: 'y', nodeValue: newSource.y, group: newKey, type: VARIABLE, category: "mutable" },
-        { nodeName: 'val1', nodeValue: this.state.tableNodes[newSource.y][newSource.x].value, group: newKey, type: VARIABLE, category: "immutable" },
+        { 
+          text: 'Input', 
+          tableX: newSource.x, 
+          tableY: newSource.y, 
+          tableOffsetX: offX, 
+          tableOffsetY: offY, 
+          isGroup: true, 
+          type: SOURCE, category: "source" 
+        },
+        { 
+          nodeName: 'x', 
+          nodeValue: newSource.x, 
+          nodeText: newSource.x, 
+          group: newKey, 
+          type: VARIABLE, category: "mutable" 
+        },
+        { 
+          nodeName: 'y', 
+          nodeValue: newSource.y, 
+          nodeText: newSource.y, 
+          group: newKey, 
+          type: VARIABLE, category: "mutable" 
+        },
+        { 
+          nodeName: 'val1', 
+          nodeValue: this.state.tableNodes[newSource.y][newSource.x].value, 
+          nodeText: this.formatValue(this.state.tableNodes[newSource.y][newSource.x].value),
+          group: newKey, 
+          type: VARIABLE, category: "immutable" 
+        },
       ]);
 
       const [updatedLinkDataArray, _] = this.addDependencyEdges([
@@ -820,7 +911,12 @@ class App extends React.Component<{}, AppState> {
 
   addOperation(operation: string) {
     const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
-      { nodeName: operation, nodeValue: NaN, type: OPERATION, category: "operation" },
+      { 
+        nodeName: operation, 
+        nodeValue: NaN, 
+        nodeText: "NaN",
+        type: OPERATION, category: "operation" 
+      },
     ]);
     this.setState({
       nodeDataArray: updatedNodeDataArray,
@@ -831,7 +927,12 @@ class App extends React.Component<{}, AppState> {
 
   addNotOperation() {
     const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
-      { nodeName: "Not", nodeValue: NaN, type: OPERATION, category: "mutable" },
+      { 
+        nodeName: "Not", 
+        nodeValue: NaN, 
+        nodeText: "NaN",
+        type: OPERATION, category: "mutable" 
+      },
     ]);
     this.setState({
       nodeDataArray: updatedNodeDataArray,
@@ -850,7 +951,12 @@ class App extends React.Component<{}, AppState> {
 
   addConstant(value: number) {
     const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
-      { nodeName: 'const', nodeValue: value, type: VARIABLE, category: "immutable" },
+      { 
+        nodeName: 'const', 
+        nodeValue: value, 
+        nodeText: this.formatValue(value),
+        type: VARIABLE, category: "immutable" 
+      },
     ]);
     this.setState({
       nodeDataArray: updatedNodeDataArray,
@@ -862,7 +968,12 @@ class App extends React.Component<{}, AppState> {
 
   handleConditionalButton() {
     const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
-      { nodeName: "if", nodeValue: NaN, type: OPERATION, category: "conditional" },
+      { 
+        nodeName: "if", 
+        nodeValue: NaN, 
+        nodeText: "NaN",
+        type: OPERATION, category: "conditional" 
+      },
     ]);
     this.setState({
       nodeDataArray: updatedNodeDataArray,
@@ -1113,6 +1224,13 @@ class App extends React.Component<{}, AppState> {
     );
   }
 
+  formatValue(val: number): string {
+  const valStr = val.toString();
+                      return valStr.length > 6
+                        ? Number(val).toExponential(1)
+                        : val.toString();
+  }
+
   render() {
     console.log('nodeDataArray', this.state.nodeDataArray);
     console.log('linkDataArray', this.state.linkDataArray);
@@ -1269,12 +1387,7 @@ class App extends React.Component<{}, AppState> {
                     className="graph-node"
                     onClick={() => this.setSelectedNode(node)}
                   >
-                    {(() => {
-                      const valStr = node.value.toString();
-                      return valStr.length > 6
-                        ? Number(node.value).toExponential(1)
-                        : node.value;
-                    })()}
+                    {this.formatValue(node.value)}
                   </div>
                 </div>
               )))}
