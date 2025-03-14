@@ -52,7 +52,7 @@
 
 .node-coordinates {
   position: absolute;
-  top: -36px;
+  top: -32px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 12px;
@@ -79,7 +79,7 @@
   cursor: pointer;
   position: absolute;
   transform: translate(-50%, -50%);
-  padding: 0 5px;
+  padding: 0 2px;
   white-space: nowrap;
 }
 
@@ -105,6 +105,18 @@
 
 .node-container.source.selected .graph-node {
   background-color: #ece924;
+}
+
+.graph-node:hover {
+  box-shadow: inset 0 0 0 3px #a0c4ff;
+}
+
+.graph-node.hover-sink {
+  box-shadow: inset 0 0 0 3px #ec4d4dcc;
+}
+
+.graph-node.hover-source {
+  box-shadow: inset 0 0 0 3px #24ca2ccc;
 }
 
 .edge-line {
