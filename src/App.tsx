@@ -1269,7 +1269,12 @@ class App extends React.Component<{}, AppState> {
                     className="graph-node"
                     onClick={() => this.setSelectedNode(node)}
                   >
-                    {node.value}
+                    {(() => {
+                      const valStr = node.value.toString();
+                      return valStr.length > 6
+                        ? Number(node.value).toExponential(1)
+                        : node.value;
+                    })()}
                   </div>
                 </div>
               )))}

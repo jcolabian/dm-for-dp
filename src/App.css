@@ -69,7 +69,7 @@
 }
 
 .graph-node {
-  width: 30px;
+  min-width: 30px;
   height: 30px;
   background-color: #f0f0f0;
   border: 1px solid #ccc;
@@ -79,6 +79,8 @@
   cursor: pointer;
   position: absolute;
   transform: translate(-50%, -50%);
+  padding: 0 5px;
+  white-space: nowrap;
 }
 
 .node-container.locked .graph-node {
