@@ -62,10 +62,11 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
       'undoManager.isEnabled': true,
       model: $(go.GraphLinksModel, {
         linkKeyProperty: 'key'
-//      }),
-//      layout: $(go.LayeredDigraphLayout,{
-//        direction: 90,
-//        layeringOption: go.LayeredDigraphLayering.LongestPathSink
+      }),
+      layout: $(go.LayeredDigraphLayout, {
+        direction: 90,
+        layeringOption: go.LayeredDigraphLayering.LongestPathSink,
+        setsPortSpots: false
       })
     });
 
@@ -73,11 +74,10 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
       switch (n) {
         case 1:
           return [
-            $(go.Shape, "Circle",
+            $(go.Shape, "Diamond",
               {
-                desiredSize: new go.Size(12, 12),
-                alignment: go.Spot.Top,
-                margin: new go.Margin(-6, 0, 0, 0),
+                desiredSize: new go.Size(15, 15),
+                alignment: new go.Spot(0.5, 0, 0, 2),
                 fill: "black",
                 stroke: null,
                 portId: "topPort",
@@ -91,11 +91,10 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           ];
         case 2:
           return [
-            $(go.Shape, "Circle",
+            $(go.Shape, "Diamond",
               {
-                desiredSize: new go.Size(12, 12),
-                alignment: go.Spot.Left,
-                margin: new go.Margin(0, 0, 0, -6),
+                desiredSize: new go.Size(15, 15),
+                alignment: new go.Spot(0, 0.5, 2, 1),
                 fill: "black",
                 stroke: null,
                 portId: "leftPort",
@@ -106,11 +105,10 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
                 cursor: "pointer"
               }
             ),
-            $(go.Shape, "Circle",
+            $(go.Shape, "Diamond",
               {
-                desiredSize: new go.Size(12, 12),
-                alignment: go.Spot.Right,
-                margin: new go.Margin(0, -6, 0, 0),
+                desiredSize: new go.Size(15, 15),
+                alignment: new go.Spot(1, 0.5, -2, 1),
                 fill: "black",
                 stroke: null,
                 portId: "rightPort",
@@ -124,11 +122,10 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           ];
         case 3:
           return [
-            $(go.Shape, "Circle",
+            $(go.Shape, "Diamond",
               {
-                desiredSize: new go.Size(12, 12),
-                alignment: go.Spot.Left,
-                margin: new go.Margin(0, 0, 0, -6),
+                desiredSize: new go.Size(15, 15),
+                alignment: new go.Spot(0, 0.5, 2, 1),
                 fill: "black",
                 stroke: null,
                 portId: "leftPort",
@@ -139,11 +136,10 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
                 cursor: "pointer"
               }
             ),
-            $(go.Shape, "Circle",
+            $(go.Shape, "Diamond",
               {
-                desiredSize: new go.Size(12, 12),
-                alignment: go.Spot.Right,
-                margin: new go.Margin(0, -6, 0, 0),
+                desiredSize: new go.Size(15, 15),
+                alignment: new go.Spot(1, 0.5, -2, 1),
                 fill: "black",
                 stroke: null,
                 portId: "rightPort",
@@ -154,11 +150,10 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
                 cursor: "pointer"
               }
             ),
-            $(go.Shape, "Circle",
+            $(go.Shape, "Diamond",
               {
-                desiredSize: new go.Size(12, 12),
-                alignment: go.Spot.Top,
-                margin: new go.Margin(-6, 0, 0, 0),
+                desiredSize: new go.Size(15, 15),
+                alignment: new go.Spot(0.5, 0, 0, 2),
                 fill: "black",
                 stroke: null,
                 portId: "topPort",
@@ -176,22 +171,37 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
     };
 
     const makeNodeContent = (from: boolean, toCount: number): go.Part => {
-      return $(go.Node, "Auto",
+      let content = $(go.Node, "Spot",
         {
           selectable: true,
           resizable: false,
         },
         $(go.Shape, "RoundedRectangle",
           {
+            name: "BKG",
             fill: "#ffffff",
             stroke: "#000000",
             strokeWidth: 2,
-            width: 100,
             height: 56,
-          }
+          },
+          new go.Binding("width", "", function (data, shape) {
+            const node = shape.part;
+            if (node) {
+              const panel = node.findObject("PANEL_CONTENT");
+              if (panel) {
+                return Math.max(56, panel.actualBounds.width + 8);
+              }
+            }
+            return 100;
+          }).ofObject()
         ),
         $(go.Panel, "Vertical",
-          { alignment: go.Spot.Center },
+          {
+            name: "PANEL_CONTENT",
+            alignment: go.Spot.Center,
+            margin: 2,
+            minSize: new go.Size(56, 0)
+          },
           $(go.TextBlock,
             {
               text: "Name",
@@ -204,8 +214,8 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
             {
               stroke: "#000000",
               strokeWidth: 1,
-              width: 100,
-              height: 6
+              height: 6,
+              stretch: go.Stretch.Horizontal
             }
           ),
           $(go.TextBlock,
@@ -216,14 +226,17 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
             },
             new go.Binding("text", "nodeValue")
           )
-        ),
-        makePort(toCount),
-        (from ?
-          $(go.Shape, "Circle",
+        ));
+      const tops = makePort(toCount);
+      for (const top of tops) {
+        content.add(top);
+      }
+      if (from) {
+        content.add(
+          $(go.Shape, "Diamond",
             {
-              desiredSize: new go.Size(12, 12),
-              alignment: go.Spot.Bottom,
-              margin: new go.Margin(0, 0, -6, 0),
+              desiredSize: new go.Size(15, 15),
+              alignment: new go.Spot(0.5, 1, 0, -1),
               fill: "black",
               stroke: null,
               portId: "bottomPort",
@@ -234,8 +247,10 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
               cursor: "pointer"
             }
           )
-          : []),
-      );
+        );
+      }
+
+      return content;
     };
 
     diagram.nodeTemplate = makeNodeContent(true, 1);
@@ -259,7 +274,11 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
       },
       $(go.Shape, { isPanelMain: true, stroke: "transparent", strokeWidth: 8 }),
       $(go.Shape, { isPanelMain: true }),
-      $(go.Shape, { toArrow: 'Standard' })
+      $(go.Shape,
+        {
+          toArrow: 'Standard'
+        },
+      )
     );
 
     diagram.linkTemplateMap.add("hidden", $(go.Link));
