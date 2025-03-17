@@ -68,6 +68,10 @@ const SOURCE = 1;
 const VARIABLE = 2;
 const OPERATION = 3;
 
+const listTemplate = [10, 97, 22, 27, 7, 42, 41, 69, 37, 3, 3, 38, 88, 97, 21, 15];
+const listA = listTemplate.slice().sort(() => Math.random() - 0.5);
+const listB = listTemplate.slice().sort(() => Math.random() - 0.5);
+
 class App extends React.Component<{}, AppState> {
   constructor(props: {}) {
     super(props);
@@ -175,15 +179,13 @@ class App extends React.Component<{}, AppState> {
         this.handleDeleteButton();
         break;
       }
-      case 'CustomLinkingRequest': {
-        const node = e.subject.data;
-        //        console.log('CustomLinkingRequest', node);
+      case 'ObjectDoubleClicked': {
+        console.log("double clicked");
+        const obj = e.subject.first();
+        if (obj && obj.key >= 0) {
+
+        }
         break;
-      }
-      case 'CustomLinkingRelease': {
-        const node = e.subject.data;
-        //        console.log('CustomLinkingRelease', node);
-        break
       }
       default: break;
     }
@@ -486,6 +488,28 @@ class App extends React.Component<{}, AppState> {
               nodeText: this.formatValue((dep.nodeValue === 0) ? 1 : 0)
             };
           }
+          else if (updatedNodeDataArray[index].nodeName === "List A") {
+            let newValue = NaN;
+            if(dep.nodeValue >= 0 && dep.nodeValue < listA.length) {
+              newValue = listA[dep.nodeValue];
+            }
+            updatedNodeDataArray[index] = {
+              ...updatedNodeDataArray[index],
+              nodeValue: newValue,
+              nodeText: newValue
+            };
+          }
+          else if (updatedNodeDataArray[index].nodeName === "List B") {
+            let newValue = NaN;
+            if(dep.nodeValue >= 0 && dep.nodeValue < listB.length) {
+              newValue = listB[dep.nodeValue];
+            }
+            updatedNodeDataArray[index] = {
+              ...updatedNodeDataArray[index],
+              nodeValue: newValue,
+              nodeText: newValue
+            };
+          }
           else {
             updatedNodeDataArray[index] = {
               ...updatedNodeDataArray[index],
@@ -564,7 +588,15 @@ class App extends React.Component<{}, AppState> {
 
         if (ifDep) {
 
-          let newValue = (ifDep.nodeValue !== 0) ? ((thenDep) ? thenDep.nodeValue : NaN) : ((elseDep) ? elseDep.nodeValue : NaN);
+          let newValue = (ifDep.nodeValue !== 0) ?
+            ((thenDep) ?
+              thenDep.nodeValue :
+              NaN
+            ) :
+            ((elseDep) ?
+              elseDep.nodeValue :
+              NaN
+            );
           console.log('conditional - ', 'if:', ifDep, ' then:', thenDep, ' else:', elseDep, ' newValue:', newValue);
           updatedNodeDataArray[index] = {
             ...updatedNodeDataArray[index],
@@ -885,7 +917,10 @@ class App extends React.Component<{}, AppState> {
 
       let updatedSourceTableNodes: coords[] = [...this.state.sourceTableNodes];
       if (targetNode.type === SOURCE) {
-        updatedSourceTableNodes = updatedSourceTableNodes.filter(source => source.x !== targetNode.tableX || source.y !== targetNode.tableY);
+        updatedSourceTableNodes = updatedSourceTableNodes.filter(
+          source => source.x !== targetNode.tableX ||
+            source.y !== targetNode.tableY
+        );
       }
 
       let updateConsts: number[] = [...this.state.consts];
@@ -910,7 +945,7 @@ class App extends React.Component<{}, AppState> {
     }
   }
 
-  addOperation(operation: string) {
+  addOperationNode(operation: string) {
     const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
       {
         nodeName: operation,
@@ -926,10 +961,10 @@ class App extends React.Component<{}, AppState> {
     });
   }
 
-  addNotOperation() {
+  addMutableNode(name: string) {
     const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
       {
-        nodeName: "Not",
+        nodeName: name,
         nodeValue: NaN,
         nodeText: "NaN",
         type: OPERATION, category: "mutable"
@@ -1297,40 +1332,53 @@ class App extends React.Component<{}, AppState> {
               <button onClick={this.handleAddSourceButton}>Add Source</button>
               <button onClick={this.handleConstantButton}>Constant</button>
               <button onClick={this.handleDeleteButton}>Delete</button>
-              <button style={{ marginLeft: "8rem" }} onClick={() => this.setState({ leftWidth: 99 })}>Hide RHS</button>
-              <button onClick={() => this.setState({ leftWidth: 40 })}>Show RHS</button>
-              <br />
-              <button onClick={() => this.addOperation('Addition')}>Addition</button>
-              <button onClick={() => this.addOperation('Subtraction')}>Subtraction</button>
-              <button onClick={() => this.addOperation('Multiplication')}>Multiplication</button>
-              <button onClick={() => this.addOperation('Division')}>Division</button>
-              <button onClick={() => this.addOperation('Modulo')}>Modulo</button>
-              <button onClick={() => this.addOperation('Minimum')}>Minimum</button>
-              <button onClick={() => this.addOperation('Maximum')}>Maximum</button>
+              <button style={{ marginLeft: "2.5rem" }} onClick={() => this.addMutableNode("List A")}>List A</button>
+              <button onClick={() => this.addMutableNode("List B")}>List B</button>
+              <button
+                style={{ marginLeft: "2.5rem" }}
+                onClick={() => {
+                  if (this.state.leftWidth >= 90) {
+                    this.setState({ leftWidth: 40 });
+                  } else {
+                    this.setState({ leftWidth: 99 });
+                  }
+                }}
+              >
+                {this.state.leftWidth >= 90 ? "Show RHS" : "Hide RHS"}
+              </button>              <br />
+              <button onClick={() => this.addOperationNode('Addition')}>Addition</button>
+              <button onClick={() => this.addOperationNode('Subtraction')}>Subtraction</button>
+              <button onClick={() => this.addOperationNode('Multiplication')}>Multiplication</button>
+              <button onClick={() => this.addOperationNode('Division')}>Division</button>
+              <button onClick={() => this.addOperationNode('Modulo')}>Modulo</button>
+              <button onClick={() => this.addOperationNode('Minimum')}>Minimum</button>
+              <button onClick={() => this.addOperationNode('Maximum')}>Maximum</button>
               <br />
               <button onClick={this.handleConditionalButton}>Condition</button>
-              <button onClick={() => this.addOperation('Or')}>Or</button>
-              <button onClick={() => this.addOperation('And')}>And</button>
-              <button onClick={() => this.addOperation('Not')}>Not</button>
-              <button onClick={() => this.addOperation('Equal')}>Equal</button>
-              <button onClick={() => this.addOperation('Smaller')}>Smaller</button>
+              <button onClick={() => this.addOperationNode('Or')}>Or</button>
+              <button onClick={() => this.addOperationNode('And')}>And</button>
+              <button onClick={() => this.addMutableNode('Not')}>Not</button>
+              <button onClick={() => this.addOperationNode('Equal')}>Equal</button>
+              <button onClick={() => this.addOperationNode('Smaller')}>Smaller</button>
               <br />
               <label>
                 x:
                 <input
                   type="number"
                   min="1"
+                  max="16"
                   value={this.state.x}
                   onChange={(e) =>
                     this.updateTableLengthX(Number(e.target.value))
                   }
                 />
               </label>
-              <label style={{ marginLeft: "7rem" }}>
+              <label style={{ marginLeft: "3rem" }}>
                 y:
                 <input
                   type="number"
                   min="1"
+                  max="16"
                   value={this.state.y}
                   onChange={(e) =>
                     this.updateTableLengthY(Number(e.target.value))
@@ -1350,34 +1398,44 @@ class App extends React.Component<{}, AppState> {
               </label>
               */}
               <br />
-              <label>
-                Left Steps:&nbsp;
-                <input
-                  type="range"
-                  min="0"
-                  max={this.state.nodeDataArray.length - 3 - this.state.sourceTableNodes.length * 2 - this.state.consts.length}
-                  // number of nodes - sink and its x/y - each source and its out - consts
-                  value={this.state.lhsStep}
-                  onChange={(e) =>
-                    this.updateStep(Number(e.target.value), this.state.rhsStep)
-                  }
-                />
-                <span style={{ marginLeft: "1rem" }}>{this.state.lhsStep}</span>
-
-              </label>
-              <label style={{ marginLeft: "2rem" }}>
-                Right Steps:&nbsp;
-                <input
-                  type="range"
-                  min="0"
-                  max={this.state.x * this.state.y}
-                  value={this.state.rhsStep}
-                  onChange={(e) =>
-                    this.updateStep(this.state.lhsStep, Number(e.target.value))
-                  }
-                />
-                <span style={{ marginLeft: "1rem" }}>{this.state.rhsStep}</span>
-              </label>
+              <div className="sliderWrapper">
+                <div className="labeledSlider">
+                  <div className="sliderLabel">
+                    Left Steps: {this.state.lhsStep}
+                  </div>
+                  <div className="slideContainer">
+                    <input
+                      type="range"
+                      className="slider"
+                      value={this.state.lhsStep}
+                      min="0"
+                      max={
+                        this.state.nodeDataArray.length - 3 - (this.state.sourceTableNodes.length * 2) - this.state.consts.length
+                      }
+                      onChange={(e) =>
+                        this.updateStep(Number(e.target.value), this.state.rhsStep)
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="labeledSlider">
+                  <div className="sliderLabel">
+                    Right Steps: {this.state.rhsStep}
+                  </div>
+                  <div className="slideContainer">
+                    <input
+                      type="range"
+                      className="slider"
+                      value={this.state.rhsStep}
+                      min="0"
+                      max={this.state.x * this.state.y}
+                      onChange={(e) =>
+                        this.updateStep(this.state.lhsStep, Number(e.target.value))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="lower-part">
               <LhsDiagramWrapper
@@ -1397,27 +1455,19 @@ class App extends React.Component<{}, AppState> {
           />
           <div className="right-section" /* style={{ width: `${100 - this.state.leftWidth}%` }} */ >
             <div className="graph-area">
-              {/*
-              {this.state.tableEdges.map((edge, index) => (
-                <svg key={index} className="edge-line">
-                  <line
-                    x1={`${(edge.from.id % this.state.x) * 100 / this.state.x + 50 / this.state.x}%`}
-                    y1={`${(this.state.y - 1 - Math.floor(edge.from.id / this.state.x)) * 100 / this.state.y + 50 / this.state.y}%`}
-                    x2={`${(edge.to.id % this.state.x) * 100 / this.state.x + 50 / this.state.x}%`}
-                    y2={`${(this.state.y - 1 - Math.floor(edge.to.id / this.state.x)) * 100 / this.state.y + 50 / this.state.y}%`}
-                  />
-                </svg>
-              ))}
-              */}
               {this.state.tableNodes.map(nodeList => nodeList.map(node => (
 
                 <div
                   key={node.id}
                   className={`node-container 
-                    ${this.state.selectedTableNode?.x === node.x && this.state.selectedTableNode?.y === node.y ? 'selected' : ''}
-                    ${this.state.sinkTableNode?.x === node.x && this.state.sinkTableNode?.y === node.y ? 'sink' : ''}
-                    ${this.state.sourceTableNodes.some(source => source.x === node.x && source.y === node.y) ? 'source' : ''}
-                    ${this.state.tableNodes[node.y][node.x].locked ? 'locked' : ''}`
+                    ${this.state.selectedTableNode?.x === node.x && this.state.selectedTableNode?.y === node.y ?
+                      'selected' : ''}
+                    ${this.state.sinkTableNode?.x === node.x && this.state.sinkTableNode?.y === node.y ?
+                      'sink' : ''}
+                    ${this.state.sourceTableNodes.some(source => source.x === node.x && source.y === node.y) ?
+                      'source' : ''}
+                    ${this.state.tableNodes[node.y][node.x].locked ?
+                      'locked' : ''}`
                   }
                   style={{
                     left: `${node.x * 100 / this.state.x + 50 / this.state.x}%`,
