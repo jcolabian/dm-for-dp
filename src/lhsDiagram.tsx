@@ -79,7 +79,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
     });
 
     // In lhsDiagram.tsx, inside initDiagram method
-    const getListContextMenu = (obj: go.GraphObject, diagram: go.Diagram): go.Adornment | null => {
+    const getListContextMenu = (obj: go.GraphObject, _diagram: go.Diagram): go.Adornment | null => {
       const $ = go.GraphObject.make;
       const node = obj.part;
       if (!node) return null;
@@ -92,7 +92,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           [...Array(this.props.listA.length).keys()].map((value) =>
             go.GraphObject.build("ContextMenuButton",
               {
-                click: (e, btn) => {
+                click: (_e, _btn) => {
                   this.props.handleListSelect(value.toString(), data.key);
                 },
                 background: "#f8f9fa",
@@ -105,7 +105,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           ),
           go.GraphObject.build("ContextMenuButton",
             {
-              click: (e, btn) => {
+              click: (_e, _btn) => {
                 this.props.handleListSelect("x", data.key);
               },
               background: "#f8f9fa",
@@ -117,7 +117,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           ).add(new go.TextBlock("x")),
           go.GraphObject.build("ContextMenuButton",
             {
-              click: (e, btn) => {
+              click: (_e, _btn) => {
                 this.props.handleListSelect("y", data.key);
               },
               background: "#f8f9fa",
@@ -133,7 +133,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           [...Array(this.props.listB.length).keys()].map((value) =>
             go.GraphObject.build("ContextMenuButton",
               {
-                click: (e, btn) => {
+                click: (_e, _btn) => {
                   this.props.handleListSelect(value.toString(), data.key);
                 },
                 background: "#f8f9fa",
@@ -146,7 +146,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           ),
           go.GraphObject.build("ContextMenuButton",
             {
-              click: (e, btn) => {
+              click: (_e, _btn) => {
                 this.props.handleListSelect("x", data.key);
               },
               background: "#f8f9fa",
@@ -158,7 +158,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           ).add(new go.TextBlock("x")),
           go.GraphObject.build("ContextMenuButton",
             {
-              click: (e, btn) => {
+              click: (_e, _btn) => {
                 this.props.handleListSelect("y", data.key);
               },
               background: "#f8f9fa",
@@ -280,7 +280,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
           resizable: false,
           contextMenu: $(go.Adornment),  // Empty placeholder
           // This binding will replace the placeholder with the appropriate menu
-          mouseEnter: function (e, obj) {
+          mouseEnter: function (_e, obj) {
             var node = obj.part;
             if (node) {
               var data = node.data;
@@ -298,7 +298,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
             strokeWidth: 2,
             height: 56,
           },
-          new go.Binding("width", "", function (data, shape) {
+          new go.Binding("width", "", function (_data, shape) {
             const node = shape.part;
             if (node) {
               const panel = node.findObject("PANEL_CONTENT");
@@ -382,8 +382,8 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
     diagram.linkTemplate = $(
       go.Link,
       {
-        mouseEnter: (e, link) => link.elt(0).stroke = "rgba(0,90,156,0.3)",
-        mouseLeave: (e, link) => link.elt(0).stroke = "transparent",
+        mouseEnter: (_e, link) => link.elt(0).stroke = "rgba(0,90,156,0.3)",
+        mouseLeave: (_e, link) => link.elt(0).stroke = "transparent",
         routing: go.Routing.AvoidsNodes
       },
       $(go.Shape, { isPanelMain: true, stroke: "transparent", strokeWidth: 8 }),
