@@ -10,6 +10,10 @@ interface WrapperProps {
   skipsDiagramUpdate: boolean;
   onDiagramEvent: (e: go.DiagramEvent) => void;
   onModelChange: (e: go.IncrementalData) => void;
+
+  listA: number[];
+  listB: number[];
+  handleListSelect: (value: string, nodeKey: number) => void;
 }
 
 export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
@@ -34,6 +38,8 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
     const diagram = this.diagramRef.current.getDiagram();
     if (diagram instanceof go.Diagram) {
       diagram.addDiagramListener('ChangedSelection', this.props.onDiagramEvent);
+      diagram.addDiagramListener('ObjectSingleClicked', this.props.onDiagramEvent);
+      diagram.addDiagramListener('ObjectDoubleClicked', this.props.onDiagramEvent);
     }
   }
 
@@ -46,6 +52,8 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
     const diagram = this.diagramRef.current.getDiagram();
     if (diagram instanceof go.Diagram) {
       diagram.removeDiagramListener('ChangedSelection', this.props.onDiagramEvent);
+      diagram.removeDiagramListener('ObjectSingleClicked', this.props.onDiagramEvent);
+      diagram.removeDiagramListener('ObjectDoubleClicked', this.props.onDiagramEvent);
     }
   }
 
@@ -69,6 +77,101 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
         setsPortSpots: false
       })
     });
+
+    // In lhsDiagram.tsx, inside initDiagram method
+    const getListContextMenu = (obj: go.GraphObject, diagram: go.Diagram): go.Adornment | null => {
+      const $ = go.GraphObject.make;
+      const node = obj.part;
+      if (!node) return null;
+
+      const data = node.data;
+      if (!data) return null;
+
+      if (data.nodeName === "List A") {
+        return $(go.Adornment, "Vertical",
+          [...Array(this.props.listA.length).keys()].map((value) =>
+            go.GraphObject.build("ContextMenuButton",
+              {
+                click: (e, btn) => {
+                  this.props.handleListSelect(value.toString(), data.key);
+                },
+                background: "#f8f9fa",
+                _buttonFillOver: "#daecef", // hover color
+                _buttonStrokeOver: "#495057",
+                height: 24,
+                width: 36,
+              }
+            ).add(new go.TextBlock(this.props.listA[value].toString()))
+          ),
+          go.GraphObject.build("ContextMenuButton",
+            {
+              click: (e, btn) => {
+                this.props.handleListSelect("x", data.key);
+              },
+              background: "#f8f9fa",
+              _buttonFillOver: "#daecef", // hover color
+              _buttonStrokeOver: "#495057",
+              height: 24,
+              width: 36,
+            }
+          ).add(new go.TextBlock("x")),
+          go.GraphObject.build("ContextMenuButton",
+            {
+              click: (e, btn) => {
+                this.props.handleListSelect("y", data.key);
+              },
+              background: "#f8f9fa",
+              _buttonFillOver: "#daecef", // hover color
+              _buttonStrokeOver: "#495057",
+              height: 24,
+              width: 36,
+            }
+          ).add(new go.TextBlock("y"))
+        );
+      } else if (data.nodeName === "List B") {
+        return $(go.Adornment, "Vertical",
+          [...Array(this.props.listB.length).keys()].map((value) =>
+            go.GraphObject.build("ContextMenuButton",
+              {
+                click: (e, btn) => {
+                  this.props.handleListSelect(value.toString(), data.key);
+                },
+                background: "#f8f9fa",
+                _buttonFillOver: "#e9ecef", // hover color
+                _buttonStrokeOver: "#495057",
+                height: 24,
+                width: 36,
+              }
+            ).add(new go.TextBlock(this.props.listB[value].toString()))
+          ),
+          go.GraphObject.build("ContextMenuButton",
+            {
+              click: (e, btn) => {
+                this.props.handleListSelect("x", data.key);
+              },
+              background: "#f8f9fa",
+              _buttonFillOver: "#daecef", // hover color
+              _buttonStrokeOver: "#495057",
+              height: 24,
+              width: 36,
+            }
+          ).add(new go.TextBlock("x")),
+          go.GraphObject.build("ContextMenuButton",
+            {
+              click: (e, btn) => {
+                this.props.handleListSelect("y", data.key);
+              },
+              background: "#f8f9fa",
+              _buttonFillOver: "#daecef", // hover color
+              _buttonStrokeOver: "#495057",
+              height: 24,
+              width: 36,
+            }
+          ).add(new go.TextBlock("y"))
+        );
+      }
+      return null;
+    };
 
     const makePort = (n: number): go.Shape[] => {
       switch (n) {
@@ -175,6 +278,17 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
         {
           selectable: true,
           resizable: false,
+          contextMenu: $(go.Adornment),  // Empty placeholder
+          // This binding will replace the placeholder with the appropriate menu
+          mouseEnter: function (e, obj) {
+            var node = obj.part;
+            if (node) {
+              var data = node.data;
+              if (data.nodeName === "List A" || data.nodeName === "List B") {
+                node.contextMenu = getListContextMenu(obj, diagram);
+              }
+            }
+          }
         },
         $(go.Shape, "RoundedRectangle",
           {

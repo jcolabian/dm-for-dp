@@ -68,7 +68,10 @@ const SOURCE = 1;
 const VARIABLE = 2;
 const OPERATION = 3;
 
-const listTemplate = [10, 97, 22, 27, 7, 42, 41, 69, 37, 3, 3, 38, 88, 97, 21, 15];
+const listTemplate: number[] = [];
+for (let i = 0; i < 16; i++) {
+  listTemplate.push(Math.floor(Math.random() * 10));
+}
 const listA = listTemplate.slice().sort(() => Math.random() - 0.5);
 const listB = listTemplate.slice().sort(() => Math.random() - 0.5);
 
@@ -138,6 +141,7 @@ class App extends React.Component<{}, AppState> {
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleMouseUp = this.handleMouseUp.bind(this);
+    this.handleListSelect = this.handleListSelect.bind(this);
   }
 
   private isDragging = false;
@@ -179,14 +183,24 @@ class App extends React.Component<{}, AppState> {
         this.handleDeleteButton();
         break;
       }
+      /*
+      case 'ObjectSingleClicked': {
+        const obj = e.subject;
+        console.log("single clicked: ", obj.key);
+        if (obj && obj.key >= 0) {
+          
+        }
+        break;
+      }
       case 'ObjectDoubleClicked': {
-        console.log("double clicked");
-        const obj = e.subject.first();
+        console.log("double clicked: ", this.state.selectedKey);
+        const obj = e.subject;
         if (obj && obj.key >= 0) {
 
         }
         break;
       }
+      */
       default: break;
     }
   }
@@ -490,7 +504,7 @@ class App extends React.Component<{}, AppState> {
           }
           else if (updatedNodeDataArray[index].nodeName === "List A") {
             let newValue = NaN;
-            if(dep.nodeValue >= 0 && dep.nodeValue < listA.length) {
+            if (dep.nodeValue >= 0 && dep.nodeValue < listA.length) {
               newValue = listA[dep.nodeValue];
             }
             updatedNodeDataArray[index] = {
@@ -501,7 +515,7 @@ class App extends React.Component<{}, AppState> {
           }
           else if (updatedNodeDataArray[index].nodeName === "List B") {
             let newValue = NaN;
-            if(dep.nodeValue >= 0 && dep.nodeValue < listB.length) {
+            if (dep.nodeValue >= 0 && dep.nodeValue < listB.length) {
               newValue = listB[dep.nodeValue];
             }
             updatedNodeDataArray[index] = {
@@ -710,8 +724,8 @@ class App extends React.Component<{}, AppState> {
     }
   }
 
-  addDependencyNodes(newNodes: Array<go.ObjectData>): [Array<go.ObjectData>, number[]] {
-    let updatedNodeDataArray = [...this.state.nodeDataArray];
+  addDependencyNodes(newNodes: Array<go.ObjectData>, nodeDataArray?: Array<go.ObjectData>): [Array<go.ObjectData>, number[]] {
+    let updatedNodeDataArray = (nodeDataArray) ? nodeDataArray : [...this.state.nodeDataArray];
     let newKey = this.state.currNodeKey + 1;
     let keys: number[] = [];
     for (let i = 0; i < newNodes.length; i++) {
@@ -723,8 +737,8 @@ class App extends React.Component<{}, AppState> {
     return [updatedNodeDataArray, keys];
   }
 
-  addDependencyEdges(newEdges: Array<go.ObjectData>): [Array<go.ObjectData>, number[]] {
-    let updatedLinkDataArray = [...this.state.linkDataArray];
+  addDependencyEdges(newEdges: Array<go.ObjectData>, linkDataArray?: Array<go.ObjectData>): [Array<go.ObjectData>, number[]] {
+    let updatedLinkDataArray = (linkDataArray) ? linkDataArray : [...this.state.linkDataArray];
     let newKey = this.state.currEdgeKey - 1;
     let keys: number[] = [];
     for (let i = 0; i < newEdges.length; i++) {
@@ -977,6 +991,69 @@ class App extends React.Component<{}, AppState> {
     });
   }
 
+  handleListSelect(value: string, nodeKey: number) {
+    console.log('list select:', value, nodeKey);
+    let updatedNodeDataArray = [...this.state.nodeDataArray];
+    let updatedLinkDataArray = [...this.state.linkDataArray];
+
+    const link = updatedLinkDataArray.find((l) => l.to === nodeKey);
+    let linkedNode = updatedNodeDataArray.find((node) => node.key === link?.from);
+
+    console.log('link:', link);
+    console.log('linkedNode:', linkedNode);
+
+    if (linkedNode?.nodeName === "const") {
+      updatedNodeDataArray = updatedNodeDataArray.filter((n) => n.key !== linkedNode?.key);
+    }
+    updatedLinkDataArray = updatedLinkDataArray.filter((l) => l.to !== nodeKey);
+
+    let newKeys: number[] = [];
+    let newCurrNodeKey = this.state.currNodeKey;
+    let newConsts = this.state.consts;
+    if (value === "x") {
+      [updatedLinkDataArray, newKeys] = this.addDependencyEdges(
+        [{ from: 1, to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }],
+        updatedLinkDataArray
+      );
+    }
+    else if (value === "y") {
+      [updatedLinkDataArray, newKeys] = this.addDependencyEdges(
+        [{ from: 2, to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }],
+        updatedLinkDataArray
+      );
+    }
+    else {
+      [updatedNodeDataArray, newKeys] = this.addConstant(parseInt(value), updatedNodeDataArray);
+      [updatedLinkDataArray, newKeys] = this.addDependencyEdges(
+        [{ from: newKeys[0], to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }],
+        updatedLinkDataArray);
+      newCurrNodeKey = this.state.currNodeKey + 1;
+      newConsts = this.state.consts.concat(newKeys);
+    }
+
+    let updatedTableNodes: tableNode[][] = [];
+    let updatedSourceTableNodes: coords[] = [];
+    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(
+      updatedNodeDataArray, 
+      updatedLinkDataArray, 
+      this.state.tableNodes, 
+      this.state.x, 
+      this.state.y, 
+      this.state.sinkTableNode
+    );
+    this.setState({
+      nodeDataArray: updatedNodeDataArray,
+      linkDataArray: updatedLinkDataArray,
+      tableNodes: updatedTableNodes,
+      sourceTableNodes: updatedSourceTableNodes,
+      currNodeKey: newCurrNodeKey,
+      consts: newConsts,
+      lhsStep: this.state.lhsStep + 1,
+      currEdgeKey: this.state.currEdgeKey - 1,
+      skipsDiagramUpdate: false,
+    });
+  }
+
   handleConstantButton() {
     this.setState({
       constDialogOpen: true,
@@ -985,21 +1062,15 @@ class App extends React.Component<{}, AppState> {
     });
   }
 
-  addConstant(value: number) {
-    const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
+  addConstant(value: number, nodeDateArray?: Array<go.ObjectData>) {
+    return this.addDependencyNodes([
       {
         nodeName: 'const',
         nodeValue: value,
         nodeText: this.formatValue(value),
         type: VARIABLE, category: "immutable"
       },
-    ]);
-    this.setState({
-      nodeDataArray: updatedNodeDataArray,
-      currNodeKey: this.state.currNodeKey + 1,
-      constDialogOpen: false,
-      consts: this.state.consts.concat(newKeys),
-    });
+    ], nodeDateArray);
   }
 
   handleConditionalButton() {
@@ -1445,6 +1516,9 @@ class App extends React.Component<{}, AppState> {
                 skipsDiagramUpdate={this.state.skipsDiagramUpdate}
                 onDiagramEvent={this.handleDiagramEvent}
                 onModelChange={this.handleModelChange}
+                listA={listA}
+                listB={listB}
+                handleListSelect={this.handleListSelect}
               />
             </div>
           </div>
@@ -1580,7 +1654,16 @@ class App extends React.Component<{}, AppState> {
               />
             </label>
             <div className="dialog-buttons">
-              <button onClick={() => this.addConstant(this.state.dialogValue)}>Save</button>
+              <button onClick={() => {
+                const [updatedNodeDataArray, newKeys] = this.addConstant(this.state.dialogValue);
+                this.setState({
+                  nodeDataArray: updatedNodeDataArray,
+                  currNodeKey: this.state.currNodeKey + 1,
+                  constDialogOpen: false,
+                  consts: this.state.consts.concat(newKeys),
+                });
+              }
+              }>Save</button>
               <button onClick={() => this.setState({
                 constDialogOpen: false
               })}>
