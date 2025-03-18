@@ -144,6 +144,20 @@ class App extends React.Component<{}, AppState> {
     this.handleListSelect = this.handleListSelect.bind(this);
   }
 
+  createState(currState: AppState, partialState: Partial<AppState>): AppState {
+    return {
+      ...produce(currState, (draft) => {
+        for (const key in partialState) {
+          draft[key] = partialState[key];
+        }
+      })
+    };
+  }
+
+  commitState(newState: AppState) {
+    this.setState(newState);
+  }
+
   private isDragging = false;
 
   handleMouseDown(e: React.MouseEvent<HTMLDivElement>) {
@@ -180,7 +194,7 @@ class App extends React.Component<{}, AppState> {
         break;
       }
       case 'SelectionDeletingCustom': {
-        this.handleDeleteButton();
+        this.commitState(this.handleDeleteButton());
         break;
       }
       /*
@@ -229,21 +243,11 @@ class App extends React.Component<{}, AppState> {
     });
 
     if (e.insertedLinkKeys) {
-      const [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
-        this.updateDependencyNodeValues(
-          this.state.nodeDataArray,
-          updatedLinkDataArray,
-          this.state.tableNodes,
-          this.state.x,
-          this.state.y,
-          this.state.sinkTableNode
-        );
-      this.setState({
-        sourceTableNodes: updatedSourceTableNodes,
-        tableNodes: updatedTableNodes,
-        nodeDataArray: updatedNodeDataArray,
-        linkDataArray: updatedLinkDataArray
-      });
+      this.commitState(
+        this.updateDependencyNodeValues(this.createState(this.state, {
+          linkDataArray: updatedLinkDataArray,
+        }))
+      );
     }
   }
 
@@ -295,14 +299,18 @@ class App extends React.Component<{}, AppState> {
   }
 
   updateDependencyNodeValues(
-    nodeDataArray: go.ObjectData[],
-    linkDataArray: go.ObjectData[],
-    tableNodes: tableNode[][],
-    x: number, y: number,
-    sink?: coords,
-    lhsStep?: number, rhsStep?: number
-  ): [go.ObjectData[], tableNode[][], coords[]] {
+    state: AppState
+  ): AppState {
+    let nodeDataArray = state.nodeDataArray;
+    let linkDataArray = state.linkDataArray;
+    let tableNodes = state.tableNodes;
+    let x = state.x;
+    let y = state.y;
+    let sink = state.sinkTableNode;
+    let lhsStep = state.lhsStep;
+    let rhsStep = state.rhsStep;
     let dummyArray = [...nodeDataArray];
+
     let updatedNodeDataArray = [...nodeDataArray];
     let updatedLinkDataArray = [...linkDataArray];
     //let updatedTableNodes = [...tableNodes]
@@ -391,7 +399,11 @@ class App extends React.Component<{}, AppState> {
       }
     }
 
-    return [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes];
+    return this.createState(state, {
+      nodeDataArray: updatedNodeDataArray,
+      tableNodes: updatedTableNodes,
+      sourceTableNodes: updatedSourceTableNodes
+    });
   }
 
   handleRelinkChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -494,10 +506,14 @@ class App extends React.Component<{}, AppState> {
         if (dep) {
           //          console.log('out/mutable - dep:', dep.value);
           if (updatedNodeDataArray[index].nodeName === "Not") {
+            let newValue = (dep.nodeValue === 0) ? 1 : 0;
+            if (isNaN(dep.nodeValue)) {
+              newValue = NaN;
+            }
             updatedNodeDataArray[index] = {
               ...updatedNodeDataArray[index],
-              nodeValue: (dep.nodeValue === 0) ? 1 : 0,
-              nodeText: this.formatValue((dep.nodeValue === 0) ? 1 : 0)
+              nodeValue: newValue,
+              nodeText: this.formatValue(newValue)
             };
           }
           else if (updatedNodeDataArray[index].nodeName === "List A") {
@@ -632,67 +648,45 @@ class App extends React.Component<{}, AppState> {
     return updatedNodeDataArray;
   }
 
-  updateDependencyNodeFromTableNode(nodeDataArray: Array<go.ObjectData>, dKey: number, tNode?: tableNode) {
+  updateDependencyNodeFromTableNode(nodeDataArray: Array<go.ObjectData>, dKey: number, x: number, y: number, state?: AppState): Array<go.ObjectData> {
+    if (state === undefined) {
+      state = this.state;
+    }
+
     let updatedNodeDataArray: Array<go.ObjectData>;
 
-    if (tNode) {
       updatedNodeDataArray = nodeDataArray.map((node) => {
         if (node.key === dKey) {
-          return { ...node, tableX: tNode.x, tableY: tNode.y };
+          return { ...node, tableX: x, tableY: y };
         }
         else if (node.key === dKey + 1) {
           return {
             ...node,
-            nodeValue: tNode.x,
-            nodeText: this.formatValue(tNode.x)
+            nodeValue: x,
+            nodeText: this.formatValue(x)
           };
         }
         else if (node.key === dKey + 2) {
           return {
             ...node,
-            nodeValue: tNode.y,
-            nodeText: this.formatValue(tNode.y)
+            nodeValue: y,
+            nodeText: this.formatValue(y)
           };
         }
         else if (node.key === dKey + 3) {
+          let tValue = NaN;
+          if (x >= 0 && x < state.x && y >= 0 && y < state.y) {
+            tValue = state.tableNodes[y][x].value;
+          }
           return {
             ...node,
-            nodeValue: tNode.value,
-            nodeText: this.formatValue(tNode.value)
+            nodeValue: tValue,
+            nodeText: this.formatValue(tValue)
           };
         }
         return node;
       });
-    }
-    else {
-      updatedNodeDataArray = nodeDataArray.map((node) => {
-        if (node.key === dKey) {
-          return { ...node, tableX: -1, tableY: -1 };
-        }
-        else if (node.key === dKey + 1) {
-          return {
-            ...node,
-            nodeValue: NaN,
-            nodeText: "NaN"
-          };
-        }
-        else if (node.key === dKey + 2) {
-          return {
-            ...node,
-            nodeValue: NaN,
-            nodeText: "NaN"
-          };
-        }
-        else if (node.key === dKey + 3) {
-          return {
-            ...node,
-            nodeValue: NaN,
-            nodeText: "NaN"
-          };
-        }
-        return node;
-      });
-    }
+    
 
     return updatedNodeDataArray;
   }
@@ -725,14 +719,20 @@ class App extends React.Component<{}, AppState> {
         return (a === b) ? 1 : 0;
       case 'Smaller':
         return (a < b) ? 1 : 0;
+      case 'Smaller/Equal':
+        return (a <= b) ? 1 : 0;
       default:
         return NaN;
     }
   }
 
-  addDependencyNodes(newNodes: Array<go.ObjectData>, nodeDataArray?: Array<go.ObjectData>): [Array<go.ObjectData>, number[]] {
-    let updatedNodeDataArray = (nodeDataArray) ? nodeDataArray : [...this.state.nodeDataArray];
-    let newKey = this.state.currNodeKey + 1;
+  addDependencyNodes(newNodes: Array<go.ObjectData>, state?: AppState): [AppState, number[]] {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    let updatedNodeDataArray = [...state.nodeDataArray];
+    let newKey = state.currNodeKey + 1;
     let keys: number[] = [];
     for (let i = 0; i < newNodes.length; i++) {
       updatedNodeDataArray.push({ ...newNodes[i], key: newKey });
@@ -740,35 +740,54 @@ class App extends React.Component<{}, AppState> {
       keys.push(newKey);
       newKey++;
     }
-    return [updatedNodeDataArray, keys];
+
+    const newState = this.createState(state, {
+      nodeDataArray: updatedNodeDataArray,
+      currNodeKey: state.currNodeKey + newNodes.length
+    });
+
+    return [newState, keys];
   }
 
-  addDependencyEdges(newEdges: Array<go.ObjectData>, linkDataArray?: Array<go.ObjectData>): [Array<go.ObjectData>, number[]] {
-    let updatedLinkDataArray = (linkDataArray) ? linkDataArray : [...this.state.linkDataArray];
-    let newKey = this.state.currEdgeKey - 1;
+  addDependencyEdges(newEdges: Array<go.ObjectData>, state?: AppState): [AppState, number[]] {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    let updatedLinkDataArray = [...state.linkDataArray];
+    let newKey = state.currEdgeKey - 1;
     let keys: number[] = [];
     for (let i = 0; i < newEdges.length; i++) {
       updatedLinkDataArray.push({ ...newEdges[i], key: newKey });
       keys.push(newKey);
       newKey--;
     }
-    return [updatedLinkDataArray, keys];
+
+    const newState = this.createState(state, {
+      linkDataArray: updatedLinkDataArray,
+      currEdgeKey: state.currEdgeKey - newEdges.length
+    });
+
+    return [newState, keys];
   }
 
-  handleSetSinkButton() {
-    if (this.state.selectedTableNode === undefined ||
-      this.state.selectedTableNode === this.state.sinkTableNode) {
-      /*
-      const updatedNodeDataArray = this.updateDependencyNodeWithTableId(this.state.nodeDataArray, 0);
-      this.setState({
-        nodeDataArray: updatedNodeDataArray,
-        sinkTableNode: null,
-      });
-      */
+  handleSetSinkButton(state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
     }
-    else if (this.state.sinkTableNode !== undefined) {
-      const offsetX = this.state.selectedTableNode.x - this.state.sinkTableNode.x;
-      const offsetY = this.state.selectedTableNode.y - this.state.sinkTableNode.y;
+    else {
+      state = this.createState(state, {
+        x: state.x
+      });
+    }
+
+    if (state.selectedTableNode === undefined ||
+      state.selectedTableNode === state.sinkTableNode) {
+      return state;
+    }
+    else if (state.sinkTableNode !== undefined) {
+      const offsetX = state.selectedTableNode.x - state.sinkTableNode.x;
+      const offsetY = state.selectedTableNode.y - state.sinkTableNode.y;
 
       /*
       for (let i = 0; i < this.state.sourceTableNodes.length; i++) {
@@ -782,77 +801,69 @@ class App extends React.Component<{}, AppState> {
       }
       */
 
-      let updatedNodeDataArray = this.state.nodeDataArray;
-      let updatedTableNodes = this.state.tableNodes;
-      this.state.nodeDataArray.forEach((node) => {
+      let updatedNodeDataArray = [...state.nodeDataArray];
+      state.nodeDataArray.forEach((node) => {
         if (node.tableX !== undefined && node.tableY !== undefined) {
           updatedNodeDataArray = this.updateDependencyNodeFromTableNode(
             updatedNodeDataArray,
             node.key,
-            this.state.tableNodes[node.tableY + offsetY][node.tableX + offsetX]
+            node.tableX + offsetX,
+            node.tableY + offsetY,
+            state
           );
         }
       });
-      let updatedSourceTableNodes: coords[] = [];
-      [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(
-        updatedNodeDataArray,
-        this.state.linkDataArray,
-        updatedTableNodes,
-        this.state.x,
-        this.state.y,
-        this.state.selectedTableNode
-      );
-      this.setState({
-        tableNodes: updatedTableNodes,
+
+      return this.updateDependencyNodeValues(this.createState(state, {
         nodeDataArray: updatedNodeDataArray,
-        sourceTableNodes: updatedSourceTableNodes,
+        sinkTableNode: state.selectedTableNode,
         selectedTableNode: undefined,
-        sinkTableNode: this.state.selectedTableNode
-      });
+      }));
+
     }
     else {
-      let updatedNodeDataArray = this.updateDependencyNodeFromTableNode(this.state.nodeDataArray, 0,
-        this.state.tableNodes[this.state.selectedTableNode.y][this.state.selectedTableNode.x]);
+      let updatedNodeDataArray = this.updateDependencyNodeFromTableNode(
+        [...state.nodeDataArray], 
+        0,
+        state.selectedTableNode.x,
+        state.selectedTableNode.y,
+        state
+      );
 
       updatedNodeDataArray.forEach((node) => {
         if (node.tableOffsetX !== undefined && node.tableOffsetY !== undefined) {
-          node.tableOffsetX = node.tableX - this.state.selectedTableNode.x;
-          node.tableOffsetY = node.tableY - this.state.selectedTableNode.y;
+          node.tableOffsetX = node.tableX - state.selectedTableNode.x;
+          node.tableOffsetY = node.tableY - state.selectedTableNode.y;
         }
       });
 
-      let updatedTableNodes = this.state.tableNodes;
-      let updatedSourceTableNodes = this.state.sourceTableNodes;
-      [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(
-        updatedNodeDataArray,
-        this.state.linkDataArray,
-        updatedTableNodes,
-        this.state.x,
-        this.state.y,
-        this.state.selectedTableNode
-      );
-      this.setState({
-        tableNodes: updatedTableNodes,
+      console.log('updated:', updatedNodeDataArray);
+
+      return this.updateDependencyNodeValues(this.createState(state, {
         nodeDataArray: updatedNodeDataArray,
-        sourceTableNodes: updatedSourceTableNodes,
+        sinkTableNode: state.selectedTableNode,
         selectedTableNode: undefined,
-        sinkTableNode: this.state.selectedTableNode
-      });
+
+      }));
     }
   }
 
-  handleAddSourceButton() {
-    if (this.state.selectedTableNode === undefined ||
-      this.state.selectedTableNode === this.state.sinkTableNode ||
-      this.state.sourceTableNodes.some(source => source === this.state.selectedTableNode)) {
+  handleAddSourceButton(state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
 
+    if (state.selectedTableNode === undefined ||
+      state.selectedTableNode === state.sinkTableNode ||
+      state.sourceTableNodes.some(source => source === state.selectedTableNode)) {
+      return state;
     }
     else {
-      const newSource = this.state.selectedTableNode;
-      const newKey = this.state.currNodeKey + 1;
-      const offX = newSource.x - ((this.state.sinkTableNode === undefined) ? 0 : this.state.sinkTableNode.x);
-      const offY = newSource.y - ((this.state.sinkTableNode === undefined) ? 0 : this.state.sinkTableNode.y);
-      const [updatedNodeDataArray, newKeys] = this.addDependencyNodes([
+      const newSource = state.selectedTableNode;
+      const newKey = state.currNodeKey + 1;
+      const offX = newSource.x - ((state.sinkTableNode === undefined) ? 0 : state.sinkTableNode.x);
+      const offY = newSource.y - ((state.sinkTableNode === undefined) ? 0 : state.sinkTableNode.y);
+      const [nodedState, newKeys] = this.addDependencyNodes([
         {
           text: 'Input',
           tableX: newSource.x,
@@ -878,82 +889,64 @@ class App extends React.Component<{}, AppState> {
         },
         {
           nodeName: 'val1',
-          nodeValue: this.state.tableNodes[newSource.y][newSource.x].value,
-          nodeText: this.formatValue(this.state.tableNodes[newSource.y][newSource.x].value),
+          nodeValue: state.tableNodes[newSource.y][newSource.x].value,
+          nodeText: this.formatValue(state.tableNodes[newSource.y][newSource.x].value),
           group: newKey,
           type: VARIABLE, category: "immutable"
         },
-      ]);
+      ], state);
 
-      const [updatedLinkDataArray, _newKeys] = this.addDependencyEdges([
+      const [edgedState, _newKeys] = this.addDependencyEdges([
         { from: newKeys[1], to: newKeys[3], fromPort: "bottomPort", toPort: "leftPort", category: "hidden" },
         { from: newKeys[2], to: newKeys[3], fromPort: "bottomPort", toPort: "rightPort", category: "hidden" },
-      ]);
+      ], nodedState);
 
-      this.setState({
+      return this.createState(edgedState, {
         selectedTableNode: undefined,
-        currNodeKey: this.state.currNodeKey + 4,
-        currEdgeKey: this.state.currEdgeKey - 2,
-        nodeDataArray: updatedNodeDataArray,
-        linkDataArray: updatedLinkDataArray,
-        sourceTableNodes: [...this.state.sourceTableNodes, newSource],
-        lhsStep: this.state.lhsStep + 2,
+        sourceTableNodes: [...edgedState.sourceTableNodes, newSource],
+        lhsStep: edgedState.lhsStep + 2,
       });
     }
   }
 
-  handleDeleteButton() {
-    if (this.state.selectedKey === null || this.state.selectedKey === 0) {
-      return;
+  handleDeleteButton(state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
     }
-    else if (this.state.selectedKey < 0) {
-      const updatedLinkDataArray: Array<go.ObjectData> = this.state.linkDataArray.filter(link =>
-        link.key !== this.state.selectedKey
+
+    if (state.selectedKey === null || state.selectedKey === 0) {
+      return state;
+    }
+    else if (state.selectedKey < 0) {
+      const updatedLinkDataArray: Array<go.ObjectData> = state.linkDataArray.filter(link =>
+        link.key !== state.selectedKey
       );
 
-      let updatedNodeDataArray = this.state.nodeDataArray;
-      let updatedSourceTableNodes: coords[] = this.state.sourceTableNodes;
-      let updatedTableNodes: tableNode[][] = [];
-      [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(
-        this.state.nodeDataArray,
-        updatedLinkDataArray,
-        this.state.tableNodes,
-        this.state.x,
-        this.state.y,
-        this.state.sinkTableNode,
-        this.state.lhsStep,
-        this.state.rhsStep
-      );
-      
-      this.setState({
-        selectedKey: null,
+      return this.updateDependencyNodeValues(this.createState(state, {
         linkDataArray: updatedLinkDataArray,
-        nodeDataArray: updatedNodeDataArray,
-        tableNodes: updatedTableNodes,
-        sourceTableNodes: updatedSourceTableNodes,
-      });
-
+        selectedKey: null
+      }));
     }
     else {
-      const targetNode = this.state.nodeDataArray.find(node => node.key === this.state.selectedKey);
+      const targetNode = state.nodeDataArray.find(node => node.key === state.selectedKey);
       if (targetNode === undefined || targetNode.group !== undefined) {
-        return;
+        return state;
       }
 
       let removed: number[] = [];
-      let updatedNodeDataArray: Array<go.ObjectData> = this.state.nodeDataArray.filter(node => {
-        if (node.key === this.state.selectedKey) {
+      let updatedNodeDataArray: Array<go.ObjectData> = state.nodeDataArray.filter(node => {
+        if (node.key === state.selectedKey) {
           removed.push(node.key);
           return false;
         }
-        if (node.group !== undefined && node.group === this.state.selectedKey) {
+        if (node.group !== undefined && node.group === state.selectedKey) {
           removed.push(node.key);
           return false;
         }
         return true;
       });
 
-      let updatedSourceTableNodes: coords[] = [...this.state.sourceTableNodes];
+      let updatedSourceTableNodes: coords[] = [...state.sourceTableNodes];
       if (targetNode.type === SOURCE) {
         updatedSourceTableNodes = updatedSourceTableNodes.filter(
           source => source.x !== targetNode.tableX ||
@@ -961,69 +954,63 @@ class App extends React.Component<{}, AppState> {
         );
       }
 
-      let updateConsts: number[] = [...this.state.consts];
-      if (this.state.consts.some(key => key === targetNode.key)) {
+      let updateConsts: number[] = [...state.consts];
+      if (state.consts.some(key => key === targetNode.key)) {
         updateConsts = updateConsts.filter(key => key !== targetNode.key);
       }
 
-      let updatedLinkDataArray: Array<go.ObjectData> = this.state.linkDataArray.filter(link =>
+      let updatedLinkDataArray: Array<go.ObjectData> = state.linkDataArray.filter(link =>
         removed.includes(link.from) === false && removed.includes(link.to) === false
       );
 
       const newLhsMax = updatedNodeDataArray.length - 3 - updatedSourceTableNodes.length * 2 - updateConsts.length;
-      let updatedTableNodes: tableNode[][] = [];
-      [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(
-        updatedNodeDataArray,
-        updatedLinkDataArray,
-        this.state.tableNodes,
-        this.state.x,
-        this.state.y,
-        this.state.sinkTableNode,
-        Math.min(this.state.lhsStep, newLhsMax),
-        this.state.rhsStep
-      );
 
-      this.setState({
-        selectedKey: null,
-        sourceTableNodes: updatedSourceTableNodes,
+      return this.updateDependencyNodeValues(this.createState(state, {
         nodeDataArray: updatedNodeDataArray,
         linkDataArray: updatedLinkDataArray,
-        tableNodes: updatedTableNodes,
+        sourceTableNodes: updatedSourceTableNodes,
         consts: updateConsts,
-        lhsStep: Math.min(this.state.lhsStep, newLhsMax),
-      });
+        lhsStep: Math.min(state.lhsStep, newLhsMax),
+        selectedKey: null
+      }));
     }
   }
 
-  addOperationNode(operation: string) {
-    const [updatedNodeDataArray, _newKeys] = this.addDependencyNodes([
+  addOperationNode(operation: string, state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    const [nodedState, _newKeys] = this.addDependencyNodes([
       {
         nodeName: operation,
         nodeValue: NaN,
         nodeText: "NaN",
         type: OPERATION, category: "operation"
       },
-    ]);
-    this.setState({
-      nodeDataArray: updatedNodeDataArray,
-      currNodeKey: this.state.currNodeKey + 1,
-      lhsStep: this.state.lhsStep + 1,
+    ], state);
+
+    return this.createState(nodedState, {
+      lhsStep: nodedState.lhsStep + 1,
     });
   }
 
-  addMutableNode(name: string) {
-    const [updatedNodeDataArray, _newKeys] = this.addDependencyNodes([
+  addMutableNode(name: string, state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    const [nodedState, _newKeys] = this.addDependencyNodes([
       {
         nodeName: name,
         nodeValue: NaN,
         nodeText: "NaN",
         type: OPERATION, category: "mutable"
       },
-    ]);
-    this.setState({
-      nodeDataArray: updatedNodeDataArray,
-      currNodeKey: this.state.currNodeKey + 1,
-      lhsStep: this.state.lhsStep + 1,
+    ], state);
+
+    return this.createState(nodedState, {
+      lhsStep: nodedState.lhsStep + 1,
     });
   }
 
@@ -1035,59 +1022,50 @@ class App extends React.Component<{}, AppState> {
     const link = updatedLinkDataArray.find((l) => l.to === nodeKey);
     let linkedNode = updatedNodeDataArray.find((node) => node.key === link?.from);
 
+    let newLhsStep = this.state.lhsStep;
+
     console.log('link:', link);
     console.log('linkedNode:', linkedNode);
 
     if (linkedNode?.nodeName === "const") {
       updatedNodeDataArray = updatedNodeDataArray.filter((n) => n.key !== linkedNode?.key);
+      newLhsStep--;
     }
     updatedLinkDataArray = updatedLinkDataArray.filter((l) => l.to !== nodeKey);
 
-    let newKeys: number[] = [];
-    let newCurrNodeKey = this.state.currNodeKey;
-    let newConsts = this.state.consts;
-    if (value === "x") {
-      [updatedLinkDataArray, newKeys] = this.addDependencyEdges(
-        [{ from: 1, to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }],
-        updatedLinkDataArray
-      );
-    }
-    else if (value === "y") {
-      [updatedLinkDataArray, newKeys] = this.addDependencyEdges(
-        [{ from: 2, to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }],
-        updatedLinkDataArray
-      );
-    }
-    else {
-      [updatedNodeDataArray, newKeys] = this.addConstant(parseInt(value), updatedNodeDataArray);
-      [updatedLinkDataArray, newKeys] = this.addDependencyEdges(
-        [{ from: newKeys[0], to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }],
-        updatedLinkDataArray);
-      newCurrNodeKey = this.state.currNodeKey + 1;
-      newConsts = this.state.consts.concat(newKeys);
-    }
-
-    let updatedTableNodes: tableNode[][] = [];
-    let updatedSourceTableNodes: coords[] = [];
-    [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] = this.updateDependencyNodeValues(
-      updatedNodeDataArray,
-      updatedLinkDataArray,
-      this.state.tableNodes,
-      this.state.x,
-      this.state.y,
-      this.state.sinkTableNode
-    );
-    this.setState({
+    const cleanedState = this.createState(this.state, {
       nodeDataArray: updatedNodeDataArray,
       linkDataArray: updatedLinkDataArray,
-      tableNodes: updatedTableNodes,
-      sourceTableNodes: updatedSourceTableNodes,
-      currNodeKey: newCurrNodeKey,
-      consts: newConsts,
-      lhsStep: this.state.lhsStep + 1,
-      currEdgeKey: this.state.currEdgeKey - 1,
-      skipsDiagramUpdate: false,
     });
+
+    let newKeys: number[] = [];
+    let edgedState = this.state;
+    if (value === "x") {
+      [edgedState, newKeys] = this.addDependencyEdges([
+        { from: 1, to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }
+      ], cleanedState);
+    }
+    else if (value === "y") {
+      [edgedState, newKeys] = this.addDependencyEdges([
+        { from: 2, to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }
+      ], cleanedState);
+    }
+    else {
+      const [nodedState, halfwayKeys] = this.addConstant(parseInt(value), cleanedState);
+      [edgedState, newKeys] = this.addDependencyEdges([
+        { from: halfwayKeys[0], to: nodeKey, fromPort: "bottomPort", toPort: "topPort" }
+      ], nodedState);
+      newLhsStep++;
+    }
+
+    console.log('nodes:', edgedState.nodeDataArray);
+    console.log('links:', edgedState.linkDataArray);
+
+    this.setState(this.updateDependencyNodeValues(this.createState(edgedState, {
+      lhsStep: newLhsStep,
+      skipsDiagramUpdate: false,
+    }))
+  );
   }
 
   handleConstantButton() {
@@ -1098,30 +1076,41 @@ class App extends React.Component<{}, AppState> {
     });
   }
 
-  addConstant(value: number, nodeDateArray?: Array<go.ObjectData>) {
-    return this.addDependencyNodes([
+  addConstant(value: number, state?: AppState): [AppState, number[]] {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    const [newState, newKeys] = this.addDependencyNodes([
       {
         nodeName: 'const',
         nodeValue: value,
         nodeText: this.formatValue(value),
         type: VARIABLE, category: "immutable"
       },
-    ], nodeDateArray);
+    ], state);
+
+    return [this.createState(newState, {
+      consts: state.consts.concat(newKeys),
+    }), newKeys];
   }
 
-  handleConditionalButton() {
-    const [updatedNodeDataArray, _newKeys] = this.addDependencyNodes([
+  handleConditionalButton(state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    const [newState, _newKeys] = this.addDependencyNodes([
       {
         nodeName: "if",
         nodeValue: NaN,
         nodeText: "NaN",
         type: OPERATION, category: "conditional"
       },
-    ]);
-    this.setState({
-      nodeDataArray: updatedNodeDataArray,
-      currNodeKey: this.state.currNodeKey + 1,
-      lhsStep: this.state.lhsStep + 1,
+    ], state);
+
+    return this.createState(newState, {
+      lhsStep: newState.lhsStep + 1,
     });
   }
 
@@ -1152,222 +1141,135 @@ class App extends React.Component<{}, AppState> {
     //    console.log('lockDialogNode:', this.state.lockDialogNode);
   };
 
-  manualUpdate = () => {
-    this.setState(
-      produce((draft: AppState) => {
-        if (draft.lockDialogNode) {
-          const x = draft.lockDialogNode.x;
-          const y = draft.lockDialogNode.y;
-          draft.tableNodes[y][x].value = draft.dialogValue;
-          draft.tableNodes[y][x].locked = draft.lockDialogLock;
-        }
+  manualUpdate(state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
 
-        let updatedNodeDataArray: go.ObjectData[] = [];
-        let updatedTableNodes: tableNode[][] = [];
-        let updatedSourceTableNodes: coords[] = [];
+    let newState = produce(state, draft => {
 
-        [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
-          this.updateDependencyNodeValues(
-            draft.nodeDataArray,
-            draft.linkDataArray,
-            draft.tableNodes,
-            draft.x,
-            draft.y,
-            draft.sinkTableNode
-          );
-        draft.nodeDataArray = updatedNodeDataArray;
-        draft.tableNodes = updatedTableNodes;
-        draft.sourceTableNodes = updatedSourceTableNodes;
-        draft.lockDialogOpen = false;
-        draft.lockDialogNode = null;
-      })
-    );
+      if (draft.lockDialogNode) {
+        const { x, y } = draft.lockDialogNode;
+        draft.tableNodes[y][x].value = draft.dialogValue;
+        draft.tableNodes[y][x].locked = draft.lockDialogLock;
+      }
+
+      draft.lockDialogOpen = false;
+      draft.lockDialogNode = null;
+    });
+
+    return this.updateDependencyNodeValues(newState);
   };
 
-  updateTableLengthY(nY: number) {
-    this.setState(
-      produce((draft: AppState) => {
-        if (
-          draft.sinkTableNode !== undefined &&
-          (nY < draft.sinkTableNode.y ||
-            draft.sourceTableNodes.some(source => nY < source.y))
-        ) {
-          console.warn("Table size is too small for the current sink/source nodes");
-          return;
+  updateTableLengthY(nY: number, state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    if (
+      state.sinkTableNode !== undefined &&
+      (nY < state.sinkTableNode.y ||
+        state.sourceTableNodes.some(source => nY < source.y))
+    ) {
+      console.warn("Table size is too small for the current sink/source nodes");
+      return state;
+    }
+
+    let updatedTableNodes: tableNode[][] = [];
+    for (let i = 0; i < nY; i++) {
+      if (i < state.y) {
+        updatedTableNodes.push(state.tableNodes[i]);
+      } else {
+        updatedTableNodes.push([]);
+        for (let j = 0; j < state.x; j++) {
+          updatedTableNodes[i].push({
+            id: j + i * state.x,
+            x: j, y: i,
+            text: `Node ${j + i * state.x}`,
+            connections: [],
+            value: 0,
+            locked: false,
+            color: 0,
+          });
         }
-
-        let updatedTableNodes: tableNode[][] = [];
-        for (let i = 0; i < nY; i++) {
-          if (i < draft.y) {
-            updatedTableNodes.push(draft.tableNodes[i]);
-          } else {
-            updatedTableNodes.push([]);
-            for (let j = 0; j < draft.x; j++) {
-              updatedTableNodes[i].push({
-                id: j + i * draft.x,
-                x: j, y: i,
-                text: `Node ${j + i * draft.x}`,
-                connections: [],
-                value: 0,
-                locked: false,
-                color: 0,
-              });
-            }
-          }
-        }
+      }
+    }
 
 
-        let updatedNodeDataArray: go.ObjectData[] = [];
-        let updatedSourceTableNodes: coords[] = [];
-        const newRhsStep = (draft.rhsStep === draft.x * draft.y) ? draft.x * nY : Math.min(draft.rhsStep, draft.x * nY);
-        [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
-          this.updateDependencyNodeValues(
-            draft.nodeDataArray,
-            draft.linkDataArray,
-            updatedTableNodes,
-            draft.x,
-            nY,
-            draft.sinkTableNode,
-            draft.lhsStep,
-            newRhsStep
-          );
-        draft.nodeDataArray = updatedNodeDataArray;
-        draft.tableNodes = updatedTableNodes;
-        draft.sourceTableNodes = updatedSourceTableNodes;
-        draft.selectedTableNode = undefined;
-        draft.rhsStep = newRhsStep;
-        draft.y = nY;
-      })
-    );
+    const newRhsStep = (state.rhsStep === state.x * state.y) ? state.x * nY : Math.min(state.rhsStep, state.x * nY);
+    return this.updateDependencyNodeValues(this.createState(state, {
+      tableNodes: updatedTableNodes,
+      y: nY,
+      rhsStep: newRhsStep,
+      selectedTableNode: undefined,
+    }));
   }
 
-  updateTableLengthX(nX: number) {
-    this.setState(
-      produce((draft: AppState) => {
-        if (
-          draft.sinkTableNode !== undefined &&
-          (nX <= draft.sinkTableNode.x ||
-            draft.sourceTableNodes.some(source => nX <= source.x))
-        ) {
-          console.warn("Table size is too small for the current sink/source nodes");
-          return;
+
+  updateTableLengthX(nX: number, state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    if (
+      state.sinkTableNode !== undefined &&
+      (nX <= state.sinkTableNode.x ||
+        state.sourceTableNodes.some(source => nX <= source.x))
+    ) {
+      console.warn("Table size is too small for the current sink/source nodes");
+      return state;
+    }
+
+    let updatedTableNodes: tableNode[][] = [];
+    for (let i = 0; i < state.y; i++) {
+      updatedTableNodes.push([]);
+      for (let j = 0; j < nX; j++) {
+        if (j < state.x) {
+          let currNode = state.tableNodes[i][j];
+          updatedTableNodes[i].push({
+            id: j + i * nX,
+            x: j,
+            y: i,
+            text: `Node ${j + i * nX}`,
+            connections: [],
+            value: currNode.value,
+            locked: currNode.locked,
+            color: currNode.color,
+          });
+        } else {
+          updatedTableNodes[i].push({
+            id: j + i * nX,
+            x: j,
+            y: i,
+            text: `Node ${j + i * nX}`,
+            connections: [],
+            value: 0,
+            locked: false,
+            color: 0,
+          });
         }
+      }
+    }
 
-        let updatedTableNodes: tableNode[][] = [];
-        for (let i = 0; i < draft.y; i++) {
-          updatedTableNodes.push([]);
-          for (let j = 0; j < nX; j++) {
-            if (j < draft.x) {
-              let currNode = draft.tableNodes[i][j];
-              updatedTableNodes[i].push({
-                id: j + i * nX,
-                x: j,
-                y: i,
-                text: `Node ${j + i * nX}`,
-                connections: [],
-                value: currNode.value,
-                locked: currNode.locked,
-                color: currNode.color,
-              });
-            } else {
-              updatedTableNodes[i].push({
-                id: j + i * nX,
-                x: j,
-                y: i,
-                text: `Node ${j + i * nX}`,
-                connections: [],
-                value: 0,
-                locked: false,
-                color: 0,
-              });
-            }
-          }
-        }
+    const newRhsStep = (state.rhsStep === state.x * state.y) ? nX * state.y : Math.min(state.rhsStep, nX * state.y);
 
-        let updatedNodeDataArray: Array<go.ObjectData> = [];
-
-        /*
-        let updatedSinkTableNode =
-          (draft.sinkTableNode === undefined)
-            ? undefined
-            : draft.nodeDataArray[1].nodeValue + draft.nodeDataArray[2].nodeValue * nX;
-
-        for (let i = 0; i < draft.nodeDataArray.length; i++) {
-          if (draft.nodeDataArray[i].tableX !== undefined && draft.nodeDataArray[i].tableY !== undefined) {
-            const oldX = draft.nodeDataArray[i].tableX;
-            const oldY = draft.nodeDataArray[i].tableY;
-
-            if (i === 0) {
-              updatedNodeDataArray.push({
-                ...draft.nodeDataArray[i],
-                tableId: oldX + oldY * nX,
-              });
-              console.log("sink:", oldX + oldY * nX);
-            } else {
-              const oldOffset = draft.nodeDataArray[i].tableOffset;
-              updatedNodeDataArray.push({
-                ...draft.nodeDataArray[i],
-                tableId: oldX + oldY * nX,
-                tableOffset: oldOffset -
-                  (Math.floor((updatedSinkTableNode ?? 0) / nX) - oldY)
-                  * ((nX < draft.x) ? -1 : 1),
-              });
-              console.log("source:", oldX + oldY * nX);
-              console.log("offset:", oldOffset - Math.floor((updatedSinkTableNode ?? 0) / nX) + oldY);
-            }
-          } else {
-            updatedNodeDataArray.push(draft.nodeDataArray[i]);
-          }
-        }
-        */
-
-        let updatedSourceTableNodes: coords[] = draft.sourceTableNodes;
-        const newRhsStep = (draft.rhsStep === draft.x * draft.y) ? nX * draft.y : Math.min(draft.rhsStep, nX * draft.y);
-        [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
-          this.updateDependencyNodeValues(
-            draft.nodeDataArray,
-            draft.linkDataArray,
-            updatedTableNodes,
-            nX,
-            draft.y,
-            draft.sinkTableNode,
-            draft.lhsStep,
-            newRhsStep
-          );
-
-        draft.nodeDataArray = updatedNodeDataArray;
-        draft.tableNodes = updatedTableNodes;
-        draft.sourceTableNodes = updatedSourceTableNodes;
-        //        draft.sinkTableNode = updatedSinkTableNode;
-        draft.selectedTableNode = undefined;
-        draft.rhsStep = newRhsStep;
-        draft.x = nX;
-      })
-    );
+    return this.updateDependencyNodeValues(this.createState(state, {
+      tableNodes: updatedTableNodes,
+      x: nX,
+      rhsStep: newRhsStep,
+      selectedTableNode: undefined,
+    }));
   }
 
-  updateStep(lhs: number, rhs: number) {
-    this.setState(
-      produce((draft: AppState) => {
-        draft.lhsStep = lhs;
-        draft.rhsStep = rhs;
+  updateStep(lhs: number, rhs: number, state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
 
-        const [updatedNodeDataArray, updatedTableNodes, updatedSourceTableNodes] =
-          this.updateDependencyNodeValues(
-            draft.nodeDataArray,
-            draft.linkDataArray,
-            draft.tableNodes,
-            draft.x,
-            draft.y,
-            draft.sinkTableNode,
-            lhs,
-            rhs
-          );
-        draft.nodeDataArray = updatedNodeDataArray;
-        draft.tableNodes = updatedTableNodes;
-        draft.sourceTableNodes = updatedSourceTableNodes;
-      })
-    );
+    return this.updateDependencyNodeValues(this.createState(state, {
+      lhsStep: lhs,
+      rhsStep: rhs,
+    }));
   }
 
   formatValue(val: number): string {
@@ -1435,12 +1337,12 @@ class App extends React.Component<{}, AppState> {
         <div className="split-view">
           <div className="left-section" style={{ width: `${this.state.leftWidth}%` }}>
             <div className="upper-part">
-              <button onClick={this.handleSetSinkButton}>Set Sink</button>
-              <button onClick={this.handleAddSourceButton}>Add Source</button>
+              <button onClick={() => this.commitState(this.handleSetSinkButton(this.state))}>Set Sink</button>
+              <button onClick={() => this.commitState(this.handleAddSourceButton())}>Add Source</button>
               <button onClick={this.handleConstantButton}>Constant</button>
-              <button onClick={this.handleDeleteButton}>Delete</button>
-              <button style={{ marginLeft: "2.5rem" }} onClick={() => this.addMutableNode("List A")}>List A</button>
-              <button onClick={() => this.addMutableNode("List B")}>List B</button>
+              <button onClick={() => this.commitState(this.handleDeleteButton())}>Delete</button>
+              <button style={{ marginLeft: "2.5rem" }} onClick={() => this.commitState(this.addMutableNode("List A"))}>List A</button>
+              <button onClick={() => this.commitState(this.addMutableNode("List B"))}>List B</button>
               <button
                 style={{ marginLeft: "2.5rem" }}
                 onClick={() => {
@@ -1453,20 +1355,21 @@ class App extends React.Component<{}, AppState> {
               >
                 {this.state.leftWidth >= 90 ? "Show RHS" : "Hide RHS"}
               </button>              <br />
-              <button onClick={() => this.addOperationNode('Addition')}>Addition</button>
-              <button onClick={() => this.addOperationNode('Subtraction')}>Subtraction</button>
-              <button onClick={() => this.addOperationNode('Multiplication')}>Multiplication</button>
-              <button onClick={() => this.addOperationNode('Division')}>Division</button>
-              <button onClick={() => this.addOperationNode('Modulo')}>Modulo</button>
-              <button onClick={() => this.addOperationNode('Minimum')}>Minimum</button>
-              <button onClick={() => this.addOperationNode('Maximum')}>Maximum</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Addition'))}>Addition</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Subtraction'))}>Subtraction</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Multiplication'))}>Multiplication</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Division'))}>Division</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Modulo'))}>Modulo</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Minimum'))}>Minimum</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Maximum'))}>Maximum</button>
               <br />
-              <button onClick={this.handleConditionalButton}>Condition</button>
-              <button onClick={() => this.addOperationNode('Or')}>Or</button>
-              <button onClick={() => this.addOperationNode('And')}>And</button>
-              <button onClick={() => this.addMutableNode('Not')}>Not</button>
-              <button onClick={() => this.addOperationNode('Equal')}>Equal</button>
-              <button onClick={() => this.addOperationNode('Smaller')}>Smaller</button>
+              <button onClick={() => this.commitState(this.handleConditionalButton())}>Condition</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Or'))}>Or</button>
+              <button onClick={() => this.commitState(this.addOperationNode('And'))}>And</button>
+              <button onClick={() => this.commitState(this.addMutableNode('Not'))}>Not</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Equal'))}>Equal</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Smaller'))}>Smaller</button>
+              <button onClick={() => this.commitState(this.addOperationNode('Smaller/Equal'))}>Smaller/Equal</button>
               <br />
               <label>
                 x:
@@ -1476,7 +1379,7 @@ class App extends React.Component<{}, AppState> {
                   max="16"
                   value={this.state.x}
                   onChange={(e) =>
-                    this.updateTableLengthX(Number(e.target.value))
+                    this.commitState(this.updateTableLengthX(Number(e.target.value)))
                   }
                 />
               </label>
@@ -1488,7 +1391,7 @@ class App extends React.Component<{}, AppState> {
                   max="16"
                   value={this.state.y}
                   onChange={(e) =>
-                    this.updateTableLengthY(Number(e.target.value))
+                    this.commitState(this.updateTableLengthY(Number(e.target.value)))
                   }
                 />
               </label>
@@ -1520,7 +1423,7 @@ class App extends React.Component<{}, AppState> {
                         this.state.nodeDataArray.length - 3 - (this.state.sourceTableNodes.length * 2) - this.state.consts.length
                       }
                       onChange={(e) =>
-                        this.updateStep(Number(e.target.value), this.state.rhsStep)
+                        this.commitState(this.updateStep(Number(e.target.value), this.state.rhsStep))
                       }
                     />
                   </div>
@@ -1537,7 +1440,7 @@ class App extends React.Component<{}, AppState> {
                       min="0"
                       max={this.state.x * this.state.y}
                       onChange={(e) =>
-                        this.updateStep(this.state.lhsStep, Number(e.target.value))
+                        this.commitState(this.updateStep(this.state.lhsStep, Number(e.target.value)))
                       }
                     />
                   </div>
@@ -1660,7 +1563,7 @@ class App extends React.Component<{}, AppState> {
               />
             </label>
             <div className="dialog-buttons">
-              <button onClick={this.manualUpdate}>Save</button>
+              <button onClick={() => this.commitState(this.manualUpdate())}>Save</button>
               <button onClick={() => this.setState({
                 lockDialogOpen: false,
                 lockDialogNode: null
@@ -1691,13 +1594,10 @@ class App extends React.Component<{}, AppState> {
             </label>
             <div className="dialog-buttons">
               <button onClick={() => {
-                const [updatedNodeDataArray, newKeys] = this.addConstant(this.state.dialogValue);
-                this.setState({
-                  nodeDataArray: updatedNodeDataArray,
-                  currNodeKey: this.state.currNodeKey + 1,
+                const [newState, newKeys] = this.addConstant(this.state.dialogValue);
+                this.commitState(this.createState(newState, {
                   constDialogOpen: false,
-                  consts: this.state.consts.concat(newKeys),
-                });
+                }));
               }
               }>Save</button>
               <button onClick={() => this.setState({
