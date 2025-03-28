@@ -55,18 +55,12 @@ interface AppState {
   rhsStep: number;
 
   consts: number[];
-  leftWidth: number; // percent of width for left section
+  leftWidth: number;
 }
 
 const x = 12;
 const y = 1;
 const vals = 1;
-
-//TYPE DEFINITIONS
-const SINK = 0;
-const SOURCE = 1;
-const VARIABLE = 2;
-const OPERATION = 3;
 
 const listTemplate: number[] = [];
 for (let i = 0; i < 16; i++) {
@@ -91,10 +85,10 @@ class App extends React.Component<{}, AppState> {
     }
     this.state = {
       nodeDataArray: [
-        { key: 0, text: 'Output', tableX: -1, tableY: -1, isGroup: true, type: SINK, category: "sink" },
-        { key: 1, nodeName: 'x', nodeValue: NaN, nodeText: "NaN", group: 0, type: VARIABLE, category: "immutable" },
-        { key: 2, nodeName: 'y', nodeValue: NaN, nodeText: "NaN", group: 0, type: VARIABLE, category: "immutable" },
-        { key: 3, nodeName: 'val1', nodeValue: NaN, nodeText: "NaN", group: 0, type: VARIABLE, category: "out" },
+        { key: 0, text: 'Output', tableX: -1, tableY: -1, isGroup: true, category: "sink" },
+        { key: 1, nodeName: 'x', nodeValue: NaN, nodeText: "NaN", group: 0, category: "immutable" },
+        { key: 2, nodeName: 'y', nodeValue: NaN, nodeText: "NaN", group: 0, category: "immutable" },
+        { key: 3, nodeName: 'val1', nodeValue: NaN, nodeText: "NaN", group: 0, category: "out" },
       ],
       linkDataArray: [
       ],
@@ -142,6 +136,13 @@ class App extends React.Component<{}, AppState> {
 
   }
 
+  formatValue(val: number): string {
+    const valStr = val.toString();
+    return valStr.length > 6
+      ? Number(val).toExponential(1)
+      : val.toString();
+  }
+
   createState(currState: AppState, partialState: Partial<AppState>): AppState {
     return {
       ...produce(currState, (draft) => {
@@ -154,29 +155,6 @@ class App extends React.Component<{}, AppState> {
 
   commitState(newState: AppState) {
     this.setState(newState);
-  }
-
-  private isDragging = false;
-
-  handleMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    this.isDragging = true;
-    window.addEventListener("mousemove", this.handleMouseMove);
-    window.addEventListener("mouseup", this.handleMouseUp);
-  }
-
-  handleMouseMove(e: MouseEvent) {
-    if (!this.isDragging) return;
-    // Calculate new left width as percent:
-    let newLeftWidth = (e.clientX / window.innerWidth) * 100;
-    if (newLeftWidth < 40) newLeftWidth = 40;
-    if (newLeftWidth > 99) newLeftWidth = 99;
-    this.setState({ leftWidth: newLeftWidth });
-  }
-
-  handleMouseUp() {
-    this.isDragging = false;
-    window.removeEventListener("mousemove", this.handleMouseMove);
-    window.removeEventListener("mouseup", this.handleMouseUp);
   }
 
   handleDiagramEvent(e: go.DiagramEvent) {
@@ -195,26 +173,13 @@ class App extends React.Component<{}, AppState> {
         this.commitState(this.handleDeleteButton());
         break;
       }
-      /*
-      case 'ObjectSingleClicked': {
-        const obj = e.subject;
-        console.log("single clicked: ", obj.key);
-        if (obj && obj.key >= 0) {
-          
-        }
-        break;
-      }
-      case 'ObjectDoubleClicked': {
-        console.log("double clicked: ", this.state.selectedKey);
-        const obj = e.subject;
-        if (obj && obj.key >= 0) {
-
-        }
-        break;
-      }
-      */
       default: break;
     }
+  }
+
+  handleRelinkChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const model = { ...this.state.modelData, canRelink: e.target.checked };
+    this.setState({ modelData: model });
   }
 
   handleModelChange(e: go.IncrementalData) {
@@ -229,14 +194,10 @@ class App extends React.Component<{}, AppState> {
 
 
     e.insertedLinkKeys?.forEach((key) => {
-      //      console.log("uoooooh i'm keying");
       const link = e.modifiedLinkData?.find((link) => link.key === key);
       if (link && link.key < this.state.currEdgeKey) {
-        //        console.log("uoooooh i'm inserting");
-        //this.state.linkDataArray.filter((lA) => link.from === lA.from && link.to === lA.to);
         updatedLinkDataArray.push(link);
         currEdgeKey = Math.min(currEdgeKey, link.key);
-        //        console.log(updatedLinkDataArray);
       }
     });
 
@@ -296,9 +257,7 @@ class App extends React.Component<{}, AppState> {
     return [sorted, reverseAdjacencyList];
   }
 
-  updateDependencyNodeValues(
-    state: AppState
-  ): AppState {
+  updateDependencyNodeValues(state: AppState): AppState {
     let nodeDataArray = state.nodeDataArray;
     let linkDataArray = state.linkDataArray;
     let tableNodes = state.tableNodes;
@@ -311,7 +270,6 @@ class App extends React.Component<{}, AppState> {
 
     let updatedNodeDataArray = [...nodeDataArray];
     let updatedLinkDataArray = [...linkDataArray];
-    //let updatedTableNodes = [...tableNodes]
     let updatedTableNodes = tableNodes.map(nodeList => nodeList.map(node => (({ ...node, value: [NaN, NaN, NaN] }))));
 
     if (sink === undefined) {
@@ -330,20 +288,12 @@ class App extends React.Component<{}, AppState> {
       updatedLinkDataArray
     );
 
-    //    console.log("Ordered nodes:", orderedNodes);
-    //    console.log("Adjacency list:", reverseAdjacencyList);
-    //    console.log("ref sink:", this.state.sinkTableNode);
-    //    console.log("sink:", sink);
-
-    //updatedTableNodes[0].value = 1;
-
     for (let i = 0; i < y; i++) {
       for (let j = 0; j < x; j++) {
 
         if (tableNodes[i][j].locked) {
           updatedTableNodes[i][j].value = tableNodes[i][j].value;
           console.log('locked:', i * x + j);
-          //        console.log('value:', updatedTableNodes[i].value);
           continue;
         }
 
@@ -354,7 +304,6 @@ class App extends React.Component<{}, AppState> {
           dummyArray = this.updateDependencyNodeFromDependencies(dummyArray, updatedTableNodes,
             orderedNodes[j], offsetX, offsetY, true, x, y, sink, reverseAdjacencyList.get(orderedNodes[j]));
         }
-        //if (true) continue;
 
         dummyArray.forEach((node) => {
           if (node.category === "out") {
@@ -370,25 +319,6 @@ class App extends React.Component<{}, AppState> {
             }
           }
         });
-
-        /*
-        let updatedSinkNode = dummyArray.find((node) => node.key === 3);
-        if (updatedSinkNode) {
-          if (i * x + j < rhsStep) {
-            updatedTableNodes[i][j].value = updatedSinkNode.nodeValue;
-          }
-          else {
-            updatedTableNodes[i][j].value = NaN;
-          }
-
-          console.log('i:', i * x + j);
-          //        console.log('offset:', offset);
-          //        console.log('value:', updatedSinkNode.nodeValue);
-        }
-        else {
-          console.log('sorry:', i * x + j);
-        }
-        */
 
         if (offsetX === 0) {
           updatedNodeDataArray = [...dummyArray];
@@ -409,7 +339,7 @@ class App extends React.Component<{}, AppState> {
 
     let updatedSourceTableNodes: coords[] = [];
     for (let i = 0; i < updatedNodeDataArray.length; i++) {
-      if (updatedNodeDataArray[i].type === SOURCE) {
+      if (updatedNodeDataArray[i].category === "source") {
         updatedSourceTableNodes.push({ x: updatedNodeDataArray[i].tableX, y: updatedNodeDataArray[i].tableY });
       }
     }
@@ -419,11 +349,6 @@ class App extends React.Component<{}, AppState> {
       tableNodes: updatedTableNodes,
       sourceTableNodes: updatedSourceTableNodes
     });
-  }
-
-  handleRelinkChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const model = { ...this.state.modelData, canRelink: e.target.checked };
-    this.setState({ modelData: model });
   }
 
   updateDependencyNodeFromDependencies(
@@ -463,8 +388,6 @@ class App extends React.Component<{}, AppState> {
               ...updatedNodeDataArray[parentId],
               tableX: leftDep.nodeValue,
               tableY: rightDep.nodeValue,
-              //                tableOffsetX: offsetX,
-              //                tableOffsetY: offsetY
             };
 
             if (rightDep.nodeValue >= 0 && rightDep.nodeValue < y && leftDep.nodeValue >= 0 && leftDep.nodeValue < x) {
@@ -506,23 +429,12 @@ class App extends React.Component<{}, AppState> {
             nodeText: "NaN"
           };
         }
-        /*
-        const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
-        if (parent && 0 <= parent.tableId + offset && parent.tableId + offset < tableNodes.length) {
-          updatedNodeDataArray = this.updateDependencyNodeFromTableNode(
-            nodeDataArray, parent.key, tableNodes[parent.tableId]);
-        }
-        else {
-          updatedNodeDataArray[index] = { ...updatedNodeDataArray[index], nodeValue: NaN }
-        }
-        */
       }
     }
     else if (updatedNodeDataArray[index].category === "out" || updatedNodeDataArray[index].category === "mutable") {
       if (deps && deps.length === 1) {
         const dep = nodeDataArray.find((node) => node.key === deps[0].from);
         if (dep) {
-          //          console.log('out/mutable - dep:', dep.value);
           if (updatedNodeDataArray[index].nodeName === "Not") {
             let newValue = (dep.nodeValue === 0) ? 1 : 0;
             if (isNaN(dep.nodeValue)) {
@@ -602,7 +514,6 @@ class App extends React.Component<{}, AppState> {
             [leftDep, rightDep] = [rightDep, leftDep];
           }
           let newValue = this.executeOperation(nodeDataArray[index].nodeName, leftDep.nodeValue, rightDep.nodeValue);
-          //          console.log('operation - ', 'left:', leftDep, ' right:', rightDep, ' newValue:', newValue);
           updatedNodeDataArray[index] = {
             ...updatedNodeDataArray[index],
             nodeValue: newValue,
@@ -756,7 +667,6 @@ class App extends React.Component<{}, AppState> {
     let keys: number[] = [];
     for (let i = 0; i < newNodes.length; i++) {
       updatedNodeDataArray.push({ ...newNodes[i], key: newKey });
-      //      console.log('key:', newKey);
       keys.push(newKey);
       newKey++;
     }
@@ -791,6 +701,63 @@ class App extends React.Component<{}, AppState> {
     return [newState, keys];
   }
 
+  addOperationNode(operation: string, state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    const [nodedState, _newKeys] = this.addDependencyNodes([
+      {
+        nodeName: operation,
+        nodeValue: NaN,
+        nodeText: "NaN",
+        category: "operation"
+      },
+    ], state);
+
+    return this.createState(nodedState, {
+      lhsStep: nodedState.lhsStep + 1,
+    });
+  }
+
+  addMutableNode(name: string, state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    const [nodedState, _newKeys] = this.addDependencyNodes([
+      {
+        nodeName: name,
+        nodeValue: NaN,
+        nodeText: "NaN",
+        category: "mutable"
+      },
+    ], state);
+
+    return this.createState(nodedState, {
+      lhsStep: nodedState.lhsStep + 1,
+    });
+  }
+
+  addConstant(value: number, state?: AppState): [AppState, number[]] {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    const [newState, newKeys] = this.addDependencyNodes([
+      {
+        nodeName: 'const',
+        nodeValue: value,
+        nodeText: this.formatValue(value),
+        category: "immutable"
+      },
+    ], state);
+
+    return [this.createState(newState, {
+      consts: state.consts.concat(newKeys),
+    }), newKeys];
+  }
+
   handleSetSinkButton(state?: AppState): AppState {
     if (state === undefined) {
       state = this.state;
@@ -808,18 +775,6 @@ class App extends React.Component<{}, AppState> {
     else if (state.sinkTableNode !== undefined) {
       const offsetX = state.selectedTableNode.x - state.sinkTableNode.x;
       const offsetY = state.selectedTableNode.y - state.sinkTableNode.y;
-
-      /*
-      for (let i = 0; i < this.state.sourceTableNodes.length; i++) {
-        const targetX = this.state.sourceTableNodes[i].x + offsetX;
-        const targetY = this.state.sourceTableNodes[i].y + offsetY;
-        if (targetX < 0 || targetX >= this.state.tableNodes[0].length
-          || targetY < 0 || targetY >= this.state.tableNodes.length) {
-          console.warn("source.id + offset out of bounds:", targetX, targetY);
-          return;
-        }
-      }
-      */
 
       let updatedNodeDataArray = [...state.nodeDataArray];
       state.nodeDataArray.forEach((node) => {
@@ -899,21 +854,21 @@ class App extends React.Component<{}, AppState> {
           tableOffsetX: offX,
           tableOffsetY: offY,
           isGroup: true,
-          type: SOURCE, category: "source"
+          category: "source"
         },
         {
           nodeName: 'x',
           nodeValue: newSource.x,
           nodeText: newSource.x,
           group: newKey,
-          type: VARIABLE, category: "mutable"
+          category: "mutable"
         },
         {
           nodeName: 'y',
           nodeValue: newSource.y,
           nodeText: newSource.y,
           group: newKey,
-          type: VARIABLE, category: "mutable"
+          category: "mutable"
         }
       ];
 
@@ -923,7 +878,7 @@ class App extends React.Component<{}, AppState> {
           nodeValue: state.tableNodes[newSource.y][newSource.x].value[i],
           nodeText: this.formatValue(state.tableNodes[newSource.y][newSource.x].value[i]),
           group: newKey,
-          type: VARIABLE, category: "immutable"
+          category: "immutable"
         });
       }
 
@@ -980,7 +935,7 @@ class App extends React.Component<{}, AppState> {
       });
 
       let updatedSourceTableNodes: coords[] = [...state.sourceTableNodes];
-      if (targetNode.type === SOURCE) {
+      if (targetNode.category === "source") {
         updatedSourceTableNodes = updatedSourceTableNodes.filter(
           source => source.x !== targetNode.tableX ||
             source.y !== targetNode.tableY
@@ -1007,44 +962,6 @@ class App extends React.Component<{}, AppState> {
         selectedKey: null
       }));
     }
-  }
-
-  addOperationNode(operation: string, state?: AppState): AppState {
-    if (state === undefined) {
-      state = this.state;
-    }
-
-    const [nodedState, _newKeys] = this.addDependencyNodes([
-      {
-        nodeName: operation,
-        nodeValue: NaN,
-        nodeText: "NaN",
-        type: OPERATION, category: "operation"
-      },
-    ], state);
-
-    return this.createState(nodedState, {
-      lhsStep: nodedState.lhsStep + 1,
-    });
-  }
-
-  addMutableNode(name: string, state?: AppState): AppState {
-    if (state === undefined) {
-      state = this.state;
-    }
-
-    const [nodedState, _newKeys] = this.addDependencyNodes([
-      {
-        nodeName: name,
-        nodeValue: NaN,
-        nodeText: "NaN",
-        type: OPERATION, category: "mutable"
-      },
-    ], state);
-
-    return this.createState(nodedState, {
-      lhsStep: nodedState.lhsStep + 1,
-    });
   }
 
   handleListSelect(value: string, nodeKey: number) {
@@ -1109,25 +1026,6 @@ class App extends React.Component<{}, AppState> {
     });
   }
 
-  addConstant(value: number, state?: AppState): [AppState, number[]] {
-    if (state === undefined) {
-      state = this.state;
-    }
-
-    const [newState, newKeys] = this.addDependencyNodes([
-      {
-        nodeName: 'const',
-        nodeValue: value,
-        nodeText: this.formatValue(value),
-        type: VARIABLE, category: "immutable"
-      },
-    ], state);
-
-    return [this.createState(newState, {
-      consts: state.consts.concat(newKeys),
-    }), newKeys];
-  }
-
   handleConditionalButton(state?: AppState): AppState {
     if (state === undefined) {
       state = this.state;
@@ -1138,7 +1036,7 @@ class App extends React.Component<{}, AppState> {
         nodeName: "if",
         nodeValue: NaN,
         nodeText: "NaN",
-        type: OPERATION, category: "conditional"
+        category: "conditional"
       },
     ], state);
 
@@ -1147,34 +1045,7 @@ class App extends React.Component<{}, AppState> {
     });
   }
 
-  setSelectedNode(node: tableNode) {
-    if (this.state.selectedTableNode?.x === node.x && this.state.selectedTableNode?.y === node.y) {
-      this.setState({ selectedTableNode: undefined });
-    } else {
-      this.setState({ selectedTableNode: { x: node.x, y: node.y } });
-    }
-  }
-
-  openDialog(node: tableNode): void {
-    if (node === this.state.lockDialogNode) {
-      this.setState({
-        lockDialogOpen: false,
-        lockDialogNode: null,
-        dialogValue: 0,
-        lockDialogLock: false,
-      });
-      return;
-    }
-    this.setState({
-      lockDialogOpen: true,
-      lockDialogNode: node,
-      dialogValue: node.value[0],
-      lockDialogLock: true,
-    });
-    //    console.log('lockDialogNode:', this.state.lockDialogNode);
-  };
-
-  manualUpdate(state?: AppState): AppState {
+  updateNodeLock(state?: AppState): AppState {
     if (state === undefined) {
       state = this.state;
     }
@@ -1193,51 +1064,6 @@ class App extends React.Component<{}, AppState> {
 
     return this.updateDependencyNodeValues(newState);
   };
-
-  updateTableLengthY(nY: number, state?: AppState): AppState {
-    if (state === undefined) {
-      state = this.state;
-    }
-
-    if (
-      state.sinkTableNode !== undefined &&
-      (nY < state.sinkTableNode.y ||
-        state.sourceTableNodes.some(source => nY < source.y))
-    ) {
-      console.warn("Table size is too small for the current sink/source nodes");
-      return state;
-    }
-
-    let updatedTableNodes: tableNode[][] = [];
-    for (let i = 0; i < nY; i++) {
-      if (i < state.y) {
-        updatedTableNodes.push(state.tableNodes[i]);
-      } else {
-        updatedTableNodes.push([]);
-        for (let j = 0; j < state.x; j++) {
-          updatedTableNodes[i].push({
-            id: j + i * state.x,
-            x: j, y: i,
-            text: `Node ${j + i * state.x}`,
-            connections: [],
-            value: [NaN, NaN, NaN],
-            locked: false,
-            color: 0,
-          });
-        }
-      }
-    }
-
-
-    const newRhsStep = (state.rhsStep === state.x * state.y) ? state.x * nY : Math.min(state.rhsStep, state.x * nY);
-    return this.updateDependencyNodeValues(this.createState(state, {
-      tableNodes: updatedTableNodes,
-      y: nY,
-      rhsStep: newRhsStep,
-      selectedTableNode: undefined,
-    }));
-  }
-
 
   updateTableLengthX(nX: number, state?: AppState): AppState {
     if (state === undefined) {
@@ -1294,6 +1120,50 @@ class App extends React.Component<{}, AppState> {
     }));
   }
 
+  updateTableLengthY(nY: number, state?: AppState): AppState {
+    if (state === undefined) {
+      state = this.state;
+    }
+
+    if (
+      state.sinkTableNode !== undefined &&
+      (nY < state.sinkTableNode.y ||
+        state.sourceTableNodes.some(source => nY < source.y))
+    ) {
+      console.warn("Table size is too small for the current sink/source nodes");
+      return state;
+    }
+
+    let updatedTableNodes: tableNode[][] = [];
+    for (let i = 0; i < nY; i++) {
+      if (i < state.y) {
+        updatedTableNodes.push(state.tableNodes[i]);
+      } else {
+        updatedTableNodes.push([]);
+        for (let j = 0; j < state.x; j++) {
+          updatedTableNodes[i].push({
+            id: j + i * state.x,
+            x: j, y: i,
+            text: `Node ${j + i * state.x}`,
+            connections: [],
+            value: [NaN, NaN, NaN],
+            locked: false,
+            color: 0,
+          });
+        }
+      }
+    }
+
+
+    const newRhsStep = (state.rhsStep === state.x * state.y) ? state.x * nY : Math.min(state.rhsStep, state.x * nY);
+    return this.updateDependencyNodeValues(this.createState(state, {
+      tableNodes: updatedTableNodes,
+      y: nY,
+      rhsStep: newRhsStep,
+      selectedTableNode: undefined,
+    }));
+  }
+
   updateVals(nVals: number, state?: AppState): AppState {
     if (state === undefined) {
       state = this.state;
@@ -1330,12 +1200,11 @@ class App extends React.Component<{}, AppState> {
           nodeValue: NaN,
           nodeText: "NaN",
           group: 0,
-          type: VARIABLE,
           category: "out",
         });
         nodeGroups.push(0);
         state.nodeDataArray.forEach((node) => {
-          if (node.isGroup && node.type === SOURCE) {
+          if (node.isGroup && node.category === "source") {
             let newValue = NaN;
             if (node.tableX >= 0 && node.tableX < state.x && node.tableY >= 0 && node.tableY < state.y) {
               newValue = state.tableNodes[node.tableY][node.tableX].value[i];
@@ -1346,7 +1215,6 @@ class App extends React.Component<{}, AppState> {
               nodeValue: newValue,
               nodeText: this.formatValue(newValue),
               group: node.key,
-              type: VARIABLE,
               category: "immutable",
             });
             nodeGroups.push(node.key);
@@ -1399,12 +1267,31 @@ class App extends React.Component<{}, AppState> {
     }));
   }
 
-  formatValue(val: number): string {
-    const valStr = val.toString();
-    return valStr.length > 6
-      ? Number(val).toExponential(1)
-      : val.toString();
+  setSelectedNode(node: tableNode) {
+    if (this.state.selectedTableNode?.x === node.x && this.state.selectedTableNode?.y === node.y) {
+      this.setState({ selectedTableNode: undefined });
+    } else {
+      this.setState({ selectedTableNode: { x: node.x, y: node.y } });
+    }
   }
+
+  openDialog(node: tableNode): void {
+    if (node === this.state.lockDialogNode) {
+      this.setState({
+        lockDialogOpen: false,
+        lockDialogNode: null,
+        dialogValue: 0,
+        lockDialogLock: false,
+      });
+      return;
+    }
+    this.setState({
+      lockDialogOpen: true,
+      lockDialogNode: node,
+      dialogValue: node.value[0],
+      lockDialogLock: true,
+    });
+  };
 
   handleNodeMouseEnter(node: tableNode) {
     this.setState(
@@ -1446,18 +1333,33 @@ class App extends React.Component<{}, AppState> {
     );
   }
 
+  private isDragging = false;
+
+  handleMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    this.isDragging = true;
+    window.addEventListener("mousemove", this.handleMouseMove);
+    window.addEventListener("mouseup", this.handleMouseUp);
+  }
+
+  handleMouseMove(e: MouseEvent) {
+    if (!this.isDragging) return;
+
+    let newLeftWidth = (e.clientX / window.innerWidth) * 100;
+    if (newLeftWidth < 40) newLeftWidth = 40;
+    if (newLeftWidth > 99) newLeftWidth = 99;
+    this.setState({ leftWidth: newLeftWidth });
+  }
+
+  handleMouseUp() {
+    this.isDragging = false;
+    window.removeEventListener("mousemove", this.handleMouseMove);
+    window.removeEventListener("mouseup", this.handleMouseUp);
+  }
 
   render() {
     console.log('nodeDataArray', this.state.nodeDataArray);
     console.log('linkDataArray', this.state.linkDataArray);
     console.log('tableNodes', this.state.tableNodes);
-
-    /*
-    let selKey;
-    if (this.state.selectedKey !== null) {
-      selKey = <p>Selected key: {this.state.selectedKey}</p>;
-    }
-    */
 
     return (
       <div className="App">
@@ -1636,28 +1538,6 @@ class App extends React.Component<{}, AppState> {
                   </div>
                 </div>
               )))}
-              {/*}
-              {[...Array(x)].map((_, index) => (
-                <div
-                  key={index}
-                  className="bottom-side-indicator"
-                  style={{
-                    width: `${100 / x}%`,
-                    left: `${index * 100 / x}%`,
-                  }}
-                />
-              ))}
-              {[...Array(y)].map((_, index) => (
-                <div
-                  key={index}
-                  className="left-side-indicator"
-                  style={{
-                    height: `${100 / y}%`,
-                    bottom: `${index * 100 / y}%`,
-                  }}
-                />
-              ))}
-              */}
             </div>
           </div>
         </div>
@@ -1695,7 +1575,7 @@ class App extends React.Component<{}, AppState> {
               />
             </label>
             <div className="dialog-buttons">
-              <button onClick={() => this.commitState(this.manualUpdate())}>Save</button>
+              <button onClick={() => this.commitState(this.updateNodeLock())}>Save</button>
               <button onClick={() => this.setState({
                 lockDialogOpen: false,
                 lockDialogNode: null
