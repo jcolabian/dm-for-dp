@@ -9,15 +9,9 @@ interface tableNode {
   x: number;
   y: number;
   text: string;
-  connections: any[];
   value: number[];
   locked: boolean;
   color: number;
-}
-
-interface tableEdge {
-  from: tableNode;
-  to: tableNode;
 }
 
 interface coords {
@@ -38,7 +32,6 @@ interface AppState {
   selectedTableNode: coords | undefined;
   sinkTableNode: coords | undefined;
   sourceTableNodes: coords[];
-  tableEdges: tableEdge[];
 
   lockDialogOpen: boolean;
   lockDialogNode: tableNode | null;
@@ -80,7 +73,7 @@ class App extends React.Component<{}, AppState> {
       newNodes.push([]);
       for (let j = 0; j < x; j++) {
         const index = j + i * x;
-        newNodes[i].push({ id: index, x: j, y: i, text: `Node ${i}`, connections: [], value: [NaN, NaN, NaN], locked: false, color: 0 });
+        newNodes[i].push({ id: index, x: j, y: i, text: `Node ${i}`, value: [NaN, NaN, NaN], locked: false, color: 0 });
       }
     }
     this.state = {
@@ -104,7 +97,6 @@ class App extends React.Component<{}, AppState> {
       selectedTableNode: undefined,
       sinkTableNode: undefined,
       sourceTableNodes: [],
-      tableEdges: [],
 
       lockDialogOpen: false,
       lockDialogNode: null,
@@ -1090,7 +1082,6 @@ class App extends React.Component<{}, AppState> {
             x: j,
             y: i,
             text: `Node ${j + i * nX}`,
-            connections: [],
             value: currNode.value,
             locked: currNode.locked,
             color: currNode.color,
@@ -1101,7 +1092,6 @@ class App extends React.Component<{}, AppState> {
             x: j,
             y: i,
             text: `Node ${j + i * nX}`,
-            connections: [],
             value: [NaN, NaN, NaN],
             locked: false,
             color: 0,
@@ -1145,7 +1135,6 @@ class App extends React.Component<{}, AppState> {
             id: j + i * state.x,
             x: j, y: i,
             text: `Node ${j + i * state.x}`,
-            connections: [],
             value: [NaN, NaN, NaN],
             locked: false,
             color: 0,
