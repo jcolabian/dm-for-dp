@@ -830,11 +830,18 @@ class App extends React.Component<{}, AppState> {
         state
       );
 
-      updatedNodeDataArray.forEach((node) => {
+      updatedNodeDataArray = updatedNodeDataArray.map((node) => {
         if (node.tableOffsetX !== undefined && node.tableOffsetY !== undefined) {
-          node.tableOffsetX = node.tableX - state.selectedTableNode.x;
-          node.tableOffsetY = node.tableY - state.selectedTableNode.y;
+          return {
+            ...node,
+            tableOffsetX: node.tableX - state.selectedTableNode.x,
+            tableOffsetY: node.tableY - state.selectedTableNode.y,
+          };
         }
+        else {
+          return node;
+        }
+
       });
 
       console.log('updated:', updatedNodeDataArray);
