@@ -197,6 +197,7 @@ class App extends React.Component<{}, AppState> {
       this.commitState(
         this.updateDependencyNodeValues(this.createState(this.state, {
           linkDataMap: updatedLinkDataMap,
+          currEdgeKey: currEdgeKey
         }))
       );
     }
@@ -660,17 +661,17 @@ class App extends React.Component<{}, AppState> {
     }
 
     let updatedNodeDataMap = new Map(state.nodeDataMap);
-    let newKey = state.currNodeKey + 1;
+    let newKey = state.currNodeKey;
     let keys: number[] = [];
     for (let i = 0; i < newNodes.length; i++) {
+      newKey++;
       updatedNodeDataMap.set(newKey, { ...newNodes[i], key: newKey });
       keys.push(newKey);
-      newKey++;
     }
 
     const newState = this.createState(state, {
       nodeDataMap: updatedNodeDataMap,
-      currNodeKey: state.currNodeKey + newNodes.length
+      currNodeKey: newKey
     });
 
     return [newState, keys];
@@ -682,17 +683,17 @@ class App extends React.Component<{}, AppState> {
     }
 
     let updatedLinkDataMap = new Map(state.linkDataMap);
-    let newKey = state.currEdgeKey - 1;
+    let newKey = state.currEdgeKey;
     let keys: number[] = [];
     for (let i = 0; i < newEdges.length; i++) {
+      newKey--;
       updatedLinkDataMap.set(newKey, { ...newEdges[i], key: newKey });
       keys.push(newKey);
-      newKey--;
     }
 
     const newState = this.createState(state, {
       linkDataMap: updatedLinkDataMap,
-      currEdgeKey: state.currEdgeKey - newEdges.length
+      currEdgeKey: newKey
     });
 
     return [newState, keys];
@@ -1271,7 +1272,6 @@ class App extends React.Component<{}, AppState> {
       lhsStep: state.lhsStep + nVals - state.vals,
       vals: nVals,
     });
-
   }
 
   updateStep(lhs: number, rhs: number, state?: AppState): AppState {
@@ -1392,7 +1392,8 @@ class App extends React.Component<{}, AppState> {
               <button onClick={() => this.commitState(this.handleAddSourceButton())}>Add Source</button>
               <button onClick={this.handleConstantButton}>Constant</button>
               <button onClick={() => this.commitState(this.handleDeleteButton())}>Delete</button>
-              <button style={{ marginLeft: "2.5rem" }} onClick={() => this.commitState(this.addMutableNode("List A"))}>List A</button>
+              <button style={{ marginLeft: "2.5rem" }} 
+                      onClick={() => this.commitState(this.addMutableNode("List A"))}>List A</button>
               <button onClick={() => this.commitState(this.addMutableNode("List B"))}>List B</button>
               <button
                 style={{ marginLeft: "2.5rem" }}
