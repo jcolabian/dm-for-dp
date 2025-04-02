@@ -20,8 +20,8 @@ interface coords {
 }
 
 interface AppState {
-  nodeDataArray: Array<go.ObjectData>;
-  linkDataArray: Array<go.ObjectData>;
+  nodeDataMap: Map<number, go.ObjectData>;
+  linkDataMap: Map<number, go.ObjectData>;
   modelData: go.ObjectData;
   selectedKey: number | null;
   skipsDiagramUpdate: boolean;
@@ -76,14 +76,13 @@ class App extends React.Component<{}, AppState> {
       }
     }
     this.state = {
-      nodeDataArray: [
-        { key: 0, text: 'Output', tableX: -1, tableY: -1, isGroup: true, category: "sink" },
-        { key: 1, nodeName: 'x', nodeValue: NaN, nodeText: "NaN", group: 0, category: "immutable" },
-        { key: 2, nodeName: 'y', nodeValue: NaN, nodeText: "NaN", group: 0, category: "immutable" },
-        { key: 3, nodeName: 'val1', nodeValue: NaN, nodeText: "NaN", group: 0, category: "out" },
-      ],
-      linkDataArray: [
-      ],
+      nodeDataMap: new Map<number, go.ObjectData>([
+        [0, { key: 0, text: 'Output', tableX: -1, tableY: -1, isGroup: true, category: "sink" }],
+        [1, { key: 1, nodeName: 'x', nodeValue: NaN, nodeText: "NaN", group: 0, category: "immutable" }],
+        [2, { key: 2, nodeName: 'y', nodeValue: NaN, nodeText: "NaN", group: 0, category: "immutable" }],
+        [3, { key: 3, nodeName: 'val1', nodeValue: NaN, nodeText: "NaN", group: 0, category: "out" }],
+      ]),
+      linkDataMap: new Map<number, go.ObjectData>(),
       modelData: {
         canRelink: true
       },
@@ -182,14 +181,14 @@ class App extends React.Component<{}, AppState> {
 
 
     console.log("uoooooh i'm changing");
-    let updatedLinkDataArray = [...this.state.linkDataArray];
+    let updatedLinkDataMap = new Map(this.state.linkDataMap);
     let currEdgeKey = this.state.currEdgeKey;
 
 
     e.insertedLinkKeys?.forEach((key) => {
       const link = e.modifiedLinkData?.find((link) => link.key === key);
       if (link && link.key < this.state.currEdgeKey) {
-        updatedLinkDataArray.push(link);
+        updatedLinkDataMap.set(link.key, link);
         currEdgeKey = Math.min(currEdgeKey, link.key);
       }
     });
@@ -197,7 +196,7 @@ class App extends React.Component<{}, AppState> {
     if (e.insertedLinkKeys) {
       this.commitState(
         this.updateDependencyNodeValues(this.createState(this.state, {
-          linkDataArray: updatedLinkDataArray,
+          linkDataMap: updatedLinkDataMap,
         }))
       );
     }
@@ -251,19 +250,16 @@ class App extends React.Component<{}, AppState> {
   }
 
   updateDependencyNodeValues(state: AppState): AppState {
-    let nodeDataArray = state.nodeDataArray;
-    let linkDataArray = state.linkDataArray;
-    let tableNodes = state.tableNodes;
     let x = state.x;
     let y = state.y;
     let sink = state.sinkTableNode;
     let lhsStep = state.lhsStep;
     let rhsStep = state.rhsStep;
-    let dummyArray = [...nodeDataArray];
+    let dummyMap = new Map(state.nodeDataMap);
 
-    let updatedNodeDataArray = [...nodeDataArray];
-    let updatedLinkDataArray = [...linkDataArray];
-    let updatedTableNodes = tableNodes.map(nodeList => nodeList.map(node => (({ ...node, value: [NaN, NaN, NaN] }))));
+    let updatedNodeDataMap = new Map(state.nodeDataMap);
+    let updatedLinkDataMap = new Map(state.linkDataMap);
+    let updatedTableNodes = state.tableNodes.map(nodeList => nodeList.map(node => (({ ...node, value: [NaN, NaN, NaN] }))));
 
     if (sink === undefined) {
       sink = { x: 0, y: 0 };
@@ -277,15 +273,15 @@ class App extends React.Component<{}, AppState> {
 
 
     const [orderedNodes, reverseAdjacencyList] = this.topologicalSort(
-      dummyArray,
-      updatedLinkDataArray
+      Array.from(dummyMap.values()),
+      Array.from(updatedLinkDataMap.values())
     );
 
     for (let i = 0; i < y; i++) {
       for (let j = 0; j < x; j++) {
 
-        if (tableNodes[i][j].locked) {
-          updatedTableNodes[i][j].value = tableNodes[i][j].value;
+        if (state.tableNodes[i][j].locked) {
+          updatedTableNodes[i][j].value = state.tableNodes[i][j].value;
           console.log('locked:', i * x + j);
           continue;
         }
@@ -294,11 +290,11 @@ class App extends React.Component<{}, AppState> {
         let offsetY = i - sink.y;
 
         for (let j = 0; j < orderedNodes.length; j++) {
-          dummyArray = this.updateDependencyNodeFromDependencies(dummyArray, updatedTableNodes,
+          this.updateDependencyNodeFromDependencies(dummyMap, updatedTableNodes,
             orderedNodes[j], offsetX, offsetY, true, x, y, sink, reverseAdjacencyList.get(orderedNodes[j]));
         }
 
-        dummyArray.forEach((node) => {
+        dummyMap.forEach((node) => {
           if (node.category === "out") {
             console.log('out:', node);
             if (node.nodeName === "val1") {
@@ -312,223 +308,227 @@ class App extends React.Component<{}, AppState> {
             }
           }
         });
-
-        if (offsetX === 0) {
-          updatedNodeDataArray = [...dummyArray];
-        }
       }
     }
 
     for (let i = 0, j = 0; i < orderedNodes.length; i++) {
-      const currNode = dummyArray.find((node) => node.key === orderedNodes[i]);
+      const currNode = dummyMap.get(orderedNodes[i]);
       const valid = j < lhsStep || currNode?.isGroup || currNode?.category === "immutable";
       if (valid && !(currNode?.isGroup || currNode?.category === "immutable")) {
         j++;
       }
-      dummyArray = this.updateDependencyNodeFromDependencies(dummyArray, updatedTableNodes,
+      this.updateDependencyNodeFromDependencies(dummyMap, updatedTableNodes,
         orderedNodes[i], 0, 0, valid, x, y, sink, reverseAdjacencyList.get(orderedNodes[i]));
     }
-    updatedNodeDataArray = [...dummyArray];
+    updatedNodeDataMap = new Map(dummyMap);
 
     let updatedSourceTableNodes: coords[] = [];
-    for (let i = 0; i < updatedNodeDataArray.length; i++) {
-      if (updatedNodeDataArray[i].category === "source") {
-        updatedSourceTableNodes.push({ x: updatedNodeDataArray[i].tableX, y: updatedNodeDataArray[i].tableY });
+    updatedNodeDataMap.forEach((node) => {
+      if (node.category === "source") {
+        updatedSourceTableNodes.push({ x: node.tableX, y: node.tableY });
       }
-    }
+    });
 
     return this.createState(state, {
-      nodeDataArray: updatedNodeDataArray,
+      nodeDataMap: updatedNodeDataMap,
       tableNodes: updatedTableNodes,
       sourceTableNodes: updatedSourceTableNodes
     });
   }
 
   updateDependencyNodeFromDependencies(
-    nodeDataArray: Array<go.ObjectData>,
+    nodeDataMap: Map<number, go.ObjectData>,
     tableNodes: tableNode[][],
     dKey: number,
     offsetX: number, offsetY: number,
     valid: boolean,
     x: number, y: number,
     sink: coords, deps?: go.ObjectData[]) {
-    let updatedNodeDataArray = [...nodeDataArray];
-    const index = nodeDataArray.findIndex((node) => node.key === dKey);
+    const target = nodeDataMap.get(dKey);
 
-    //    console.log('index:', index);
-    if (index === -1) {
-      return updatedNodeDataArray;
+    if (target === undefined) {
+      return nodeDataMap;
     }
     else if (valid === false) {
-      updatedNodeDataArray[index] = {
-        ...updatedNodeDataArray[index],
+      nodeDataMap.set(dKey, {
+        ...target,
         nodeValue: NaN,
         nodeText: "NaN"
-      };
+      });
     }
-    else if (updatedNodeDataArray[index].category === "immutable") {
-      if (nodeDataArray[index].group !== undefined) {
+    else if (target.category === "immutable") {
+      if (target.group !== undefined) {
         if (deps && deps.length === 2) {
-          let leftDep = nodeDataArray.find((node) => node.key === deps[0].from);
-          let rightDep = nodeDataArray.find((node) => node.key === deps[1].from);
-          let parentId = nodeDataArray.findIndex((node) => node.key === nodeDataArray[index].group);
+          let leftDep = nodeDataMap.get(deps[0].from);
+          let rightDep = nodeDataMap.get(deps[1].from);
+
           if (leftDep && rightDep) {
             if (deps[0].toPort === "rightPort" && deps[1].toPort === "leftPort") {
               [leftDep, rightDep] = [rightDep, leftDep];
             }
 
-            updatedNodeDataArray[parentId] = {
-              ...updatedNodeDataArray[parentId],
+            nodeDataMap.set(target.group, {
+              ...nodeDataMap.get(target.group),
               tableX: leftDep.nodeValue,
               tableY: rightDep.nodeValue,
-            };
+            });
 
             if (rightDep.nodeValue >= 0 && rightDep.nodeValue < y && leftDep.nodeValue >= 0 && leftDep.nodeValue < x) {
-              let valNum = updatedNodeDataArray[index].nodeName === "val1" ? 0 :
-                updatedNodeDataArray[index].nodeName === "val2" ? 1 : 2;
+              let valNum = target.nodeName === "val1" ? 0 :
+                target.nodeName === "val2" ? 1 : 2;
 
-              updatedNodeDataArray[index] = {
-                ...updatedNodeDataArray[index],
+              nodeDataMap.set(dKey, {
+                ...target,
                 nodeValue: tableNodes[rightDep.nodeValue][leftDep.nodeValue].value[valNum],
                 nodeText: this.formatValue(tableNodes[rightDep.nodeValue][leftDep.nodeValue].value[valNum])
-              };
+              });
             } else {
-              updatedNodeDataArray[index] = {
-                ...updatedNodeDataArray[index],
+              nodeDataMap.set(dKey, {
+                ...target,
                 nodeValue: NaN,
                 nodeText: "NaN"
-              };
+              });
             }
           }
         }
-        else if (updatedNodeDataArray[index].nodeName === "x") {
-          updatedNodeDataArray[index] = {
-            ...updatedNodeDataArray[index],
+        else if (target.nodeName === "x") {
+          nodeDataMap.set(dKey, {
+            ...target,
             nodeValue: sink.x + offsetX,
             nodeText: this.formatValue(sink.x + offsetX)
-          };
+          });
         }
-        else if (updatedNodeDataArray[index].nodeName === "y") {
-          updatedNodeDataArray[index] = {
-            ...updatedNodeDataArray[index],
+        else if (target.nodeName === "y") {
+          nodeDataMap.set(dKey, {
+            ...target,
             nodeValue: sink.y + offsetY,
             nodeText: this.formatValue(sink.y + offsetY)
-          };
+          });
         }
         else {
-          updatedNodeDataArray[index] = {
-            ...updatedNodeDataArray[index],
+          nodeDataMap.set(dKey, {
+            ...target,
             nodeValue: NaN,
             nodeText: "NaN"
-          };
+          });
         }
       }
     }
-    else if (updatedNodeDataArray[index].category === "out" || updatedNodeDataArray[index].category === "mutable") {
+    else if (target.category === "out" || target.category === "mutable") {
       if (deps && deps.length === 1) {
-        const dep = nodeDataArray.find((node) => node.key === deps[0].from);
+        const dep = nodeDataMap.get(deps[0].from);
         if (dep) {
-          if (updatedNodeDataArray[index].nodeName === "Not") {
+          if (target.nodeName === "Not") {
             let newValue = (dep.nodeValue === 0) ? 1 : 0;
             if (isNaN(dep.nodeValue)) {
               newValue = NaN;
             }
-            updatedNodeDataArray[index] = {
-              ...updatedNodeDataArray[index],
+            nodeDataMap.set(dKey, {
+              ...target,
               nodeValue: newValue,
               nodeText: this.formatValue(newValue)
-            };
+            });
           }
-          else if (updatedNodeDataArray[index].nodeName === "List A") {
+          else if (target.nodeName === "List A") {
             let newValue = NaN;
             if (dep.nodeValue >= 0 && dep.nodeValue < listA.length) {
               newValue = listA[dep.nodeValue];
             }
-            updatedNodeDataArray[index] = {
-              ...updatedNodeDataArray[index],
+            nodeDataMap.set(dKey, {
+              ...target,
               nodeValue: newValue,
               nodeText: newValue
-            };
+            });
           }
-          else if (updatedNodeDataArray[index].nodeName === "List B") {
+          else if (target.nodeName === "List B") {
             let newValue = NaN;
             if (dep.nodeValue >= 0 && dep.nodeValue < listB.length) {
               newValue = listB[dep.nodeValue];
             }
-            updatedNodeDataArray[index] = {
-              ...updatedNodeDataArray[index],
+            nodeDataMap.set(dKey, {
+              ...target,
               nodeValue: newValue,
               nodeText: newValue
-            };
+            });
           }
           else {
-            updatedNodeDataArray[index] = {
-              ...updatedNodeDataArray[index],
+            nodeDataMap.set(dKey, {
+              ...target,
               nodeValue: dep.nodeValue,
               nodeText: this.formatValue(dep.nodeValue)
-            };
+            });
           }
         }
       }
-      else if (updatedNodeDataArray[index].nodeName === "x") {
-        const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
+      else if (target.nodeName === "x") {
+        const parent = nodeDataMap.get(target.group);
+
+        if (parent === undefined) {
+          throw new Error("no parent found");
+        }
+
         const newX = sink.x + parent.tableOffsetX + offsetX;
-        console.log('x - prev:', updatedNodeDataArray[index].nodeValue, ' newX:', newX);
-        updatedNodeDataArray[index] = {
-          ...updatedNodeDataArray[index],
+        console.log('x - prev:', target.nodeValue, ' newX:', newX);
+        nodeDataMap.set(dKey, {
+          ...target,
           nodeValue: newX,
           nodeText: this.formatValue(newX)
-        };
+        });
       }
-      else if (updatedNodeDataArray[index].nodeName === "y") {
-        const parent = nodeDataArray.find((node) => node.key === nodeDataArray[index].group);
+      else if (target.nodeName === "y") {
+        const parent = nodeDataMap.get(target.group);
+
+        if (parent === undefined) {
+          throw new Error("no parent found");
+        }
+
         const newY = sink.y + parent.tableOffsetY + offsetY;
-        console.log('y - prev:', updatedNodeDataArray[index].nodeValue, ' newY:', newY);
-        updatedNodeDataArray[index] = {
-          ...updatedNodeDataArray[index],
+        console.log('y - prev:', target.nodeValue, ' newY:', newY);
+        nodeDataMap.set(dKey, {
+          ...target,
           nodeValue: newY,
           nodeText: this.formatValue(newY)
-        };
+        });
       }
       else {
-        updatedNodeDataArray[index] = {
-          ...updatedNodeDataArray[index],
+        nodeDataMap.set(dKey, {
+          ...target,
           nodeValue: NaN,
           nodeText: "NaN"
-        };
+        });
       }
     }
-    else if (updatedNodeDataArray[index].category === "operation") {
+    else if (target.category === "operation") {
       if (deps && deps.length === 2) {
-        let leftDep = nodeDataArray.find((node) => node.key === deps[0].from);
-        let rightDep = nodeDataArray.find((node) => node.key === deps[1].from);
+        let leftDep = nodeDataMap.get(deps[0].from);
+        let rightDep = nodeDataMap.get(deps[1].from);
         if (leftDep && rightDep) {
           if (deps[0].toPort === "rightPort" && deps[1].toPort === "leftPort") {
             [leftDep, rightDep] = [rightDep, leftDep];
           }
-          let newValue = this.executeOperation(nodeDataArray[index].nodeName, leftDep.nodeValue, rightDep.nodeValue);
-          updatedNodeDataArray[index] = {
-            ...updatedNodeDataArray[index],
+          let newValue = this.executeOperation(target.nodeName, leftDep.nodeValue, rightDep.nodeValue);
+          nodeDataMap.set(dKey, {
+            ...target,
             nodeValue: newValue,
             nodeText: this.formatValue(newValue)
-          };
+          });
         }
       }
       else {
-        updatedNodeDataArray[index] = {
-          ...updatedNodeDataArray[index],
+        nodeDataMap.set(dKey, {
+          ...target,
           nodeValue: NaN,
           nodeText: "NaN"
-        };
+        });
       }
     }
-    else if (updatedNodeDataArray[index].category === "conditional") {
+    else if (target.category === "conditional") {
       if (deps && deps.length > 0) {
         let ifDep: go.ObjectData | undefined = undefined;
         let thenDep: go.ObjectData | undefined = undefined;
         let elseDep: go.ObjectData | undefined = undefined;
         deps.forEach((dep) => {
-          let depNode = nodeDataArray.find((node) => node.key === dep.from);
+          let depNode = nodeDataMap.get(dep.from);
           if (dep.toPort === "topPort") {
             ifDep = depNode;
           }
@@ -550,50 +550,52 @@ class App extends React.Component<{}, AppState> {
             NaN
           );
         console.log('conditional - ', 'if:', ifDep, ' then:', thenDep, ' else:', elseDep, ' newValue:', newValue);
-        updatedNodeDataArray[index] = {
-          ...updatedNodeDataArray[index],
+        nodeDataMap.set(dKey, {
+          ...target,
           nodeValue: newValue,
           nodeText: this.formatValue(newValue)
-        };
+        });
       }
       else {
-        updatedNodeDataArray[index] = {
-          ...updatedNodeDataArray[index],
+        nodeDataMap.set(dKey, {
+          ...target,
           nodeValue: NaN,
           nodeText: "NaN"
-        };
+        });
       }
     }
-
-    //    console.log(updatedNodeDataArray[index].category)
-    //    console.log('updated:', updatedNodeDataArray);
-    return updatedNodeDataArray;
+    //    console.log(updatedNodeDataMap[index].category)
+    //    console.log('updated:', updatedNodeDataMap);
   }
 
-  updateDependencyNodeFromTableNode(nodeDataArray: Array<go.ObjectData>, dKey: number, x: number, y: number, state?: AppState): Array<go.ObjectData> {
+  updateDependencyNodeFromTableNode(
+    nodeDataMap: Map<number, go.ObjectData>,
+    dKey: number, x: number, y: number,
+    state?: AppState):
+    Map<number, go.ObjectData> {
     if (state === undefined) {
       state = this.state;
     }
 
-    let updatedNodeDataArray: Array<go.ObjectData>;
+    let updatedNodeDataMap = new Map<number, go.ObjectData>();
 
-    updatedNodeDataArray = nodeDataArray.map((node) => {
+    nodeDataMap.forEach((node) => {
       if (node.key === dKey) {
-        return { ...node, tableX: x, tableY: y };
+        updatedNodeDataMap.set(node.key, { ...node, tableX: x, tableY: y });
       }
       else if (node.group === dKey && node.nodeName === 'x') {
-        return {
+        updatedNodeDataMap.set(node.key, {
           ...node,
           nodeValue: x,
           nodeText: this.formatValue(x)
-        };
+        });
       }
       else if (node.group === dKey && node.nodeName === 'y') {
-        return {
+        updatedNodeDataMap.set(node.key, {
           ...node,
           nodeValue: y,
           nodeText: this.formatValue(y)
-        };
+        });
       }
       else if (node.group === dKey && node.nodeName.startsWith('val')) {
         let valNum = node.nodeName === "val1" ? 0 :
@@ -602,17 +604,19 @@ class App extends React.Component<{}, AppState> {
         if (x >= 0 && x < state.x && y >= 0 && y < state.y) {
           tValue = state.tableNodes[y][x].value[valNum];
         }
-        return {
+        updatedNodeDataMap.set(node.key, {
           ...node,
           nodeValue: tValue,
           nodeText: this.formatValue(tValue)
-        };
+        });
       }
-      return node;
+      else {
+        updatedNodeDataMap.set(node.key, node);
+      }
     });
 
 
-    return updatedNodeDataArray;
+    return updatedNodeDataMap;
   }
 
   executeOperation(operation: string, a: number, b: number): number {
@@ -655,17 +659,17 @@ class App extends React.Component<{}, AppState> {
       state = this.state;
     }
 
-    let updatedNodeDataArray = [...state.nodeDataArray];
+    let updatedNodeDataMap = new Map(state.nodeDataMap);
     let newKey = state.currNodeKey + 1;
     let keys: number[] = [];
     for (let i = 0; i < newNodes.length; i++) {
-      updatedNodeDataArray.push({ ...newNodes[i], key: newKey });
+      updatedNodeDataMap.set(newKey, { ...newNodes[i], key: newKey });
       keys.push(newKey);
       newKey++;
     }
 
     const newState = this.createState(state, {
-      nodeDataArray: updatedNodeDataArray,
+      nodeDataMap: updatedNodeDataMap,
       currNodeKey: state.currNodeKey + newNodes.length
     });
 
@@ -677,17 +681,17 @@ class App extends React.Component<{}, AppState> {
       state = this.state;
     }
 
-    let updatedLinkDataArray = [...state.linkDataArray];
+    let updatedLinkDataMap = new Map(state.linkDataMap);
     let newKey = state.currEdgeKey - 1;
     let keys: number[] = [];
     for (let i = 0; i < newEdges.length; i++) {
-      updatedLinkDataArray.push({ ...newEdges[i], key: newKey });
+      updatedLinkDataMap.set(newKey, { ...newEdges[i], key: newKey });
       keys.push(newKey);
       newKey--;
     }
 
     const newState = this.createState(state, {
-      linkDataArray: updatedLinkDataArray,
+      linkDataMap: updatedLinkDataMap,
       currEdgeKey: state.currEdgeKey - newEdges.length
     });
 
@@ -769,11 +773,11 @@ class App extends React.Component<{}, AppState> {
       const offsetX = state.selectedTableNode.x - state.sinkTableNode.x;
       const offsetY = state.selectedTableNode.y - state.sinkTableNode.y;
 
-      let updatedNodeDataArray = [...state.nodeDataArray];
-      state.nodeDataArray.forEach((node) => {
+      let updatedNodeDataMap = new Map(state.nodeDataMap);
+      state.nodeDataMap.forEach((node) => {
         if (node.tableX !== undefined && node.tableY !== undefined) {
-          updatedNodeDataArray = this.updateDependencyNodeFromTableNode(
-            updatedNodeDataArray,
+          updatedNodeDataMap = this.updateDependencyNodeFromTableNode(
+            state.nodeDataMap,
             node.key,
             node.tableX + offsetX,
             node.tableY + offsetY,
@@ -783,39 +787,35 @@ class App extends React.Component<{}, AppState> {
       });
 
       return this.updateDependencyNodeValues(this.createState(state, {
-        nodeDataArray: updatedNodeDataArray,
+        nodeDataMap: updatedNodeDataMap,
         sinkTableNode: state.selectedTableNode,
         selectedTableNode: undefined,
       }));
 
     }
     else {
-      let updatedNodeDataArray = this.updateDependencyNodeFromTableNode(
-        [...state.nodeDataArray],
+      let updatedNodeDataMap = this.updateDependencyNodeFromTableNode(
+        state.nodeDataMap,
         0,
         state.selectedTableNode.x,
         state.selectedTableNode.y,
         state
       );
 
-      updatedNodeDataArray = updatedNodeDataArray.map((node) => {
+      updatedNodeDataMap.forEach((node) => {
         if (node.tableOffsetX !== undefined && node.tableOffsetY !== undefined) {
-          return {
+          updatedNodeDataMap.set(node.key, {
             ...node,
             tableOffsetX: node.tableX - state.selectedTableNode.x,
             tableOffsetY: node.tableY - state.selectedTableNode.y,
-          };
+          });
         }
-        else {
-          return node;
-        }
-
       });
 
-      console.log('updated:', updatedNodeDataArray);
+      console.log('updated:', updatedNodeDataMap);
 
       return this.updateDependencyNodeValues(this.createState(state, {
-        nodeDataArray: updatedNodeDataArray,
+        nodeDataMap: updatedNodeDataMap,
         sinkTableNode: state.selectedTableNode,
         selectedTableNode: undefined,
 
@@ -885,12 +885,6 @@ class App extends React.Component<{}, AppState> {
           { from: newKeys[2], to: newKeys[3 + i], fromPort: "bottomPort", toPort: "rightPort", category: "hidden" }
         ], edgedState);
       }
-      /*
-      const [edgedState, _newKeys] = this.addDependencyEdges([
-        { from: newKeys[1], to: newKeys[3], fromPort: "bottomPort", toPort: "leftPort", category: "hidden" },
-        { from: newKeys[2], to: newKeys[3], fromPort: "bottomPort", toPort: "rightPort", category: "hidden" },
-      ], nodedState);
-      */
 
       return this.createState(edgedState, {
         selectedTableNode: undefined,
@@ -909,32 +903,35 @@ class App extends React.Component<{}, AppState> {
       return state;
     }
     else if (state.selectedKey < 0) {
-      const updatedLinkDataArray: Array<go.ObjectData> = state.linkDataArray.filter(link =>
-        link.key !== state.selectedKey
-      );
+      const updatedLinkDataMap = new Map(state.linkDataMap);
+      updatedLinkDataMap.delete(state.selectedKey);
 
       return this.updateDependencyNodeValues(this.createState(state, {
-        linkDataArray: updatedLinkDataArray,
+        linkDataMap: updatedLinkDataMap,
         selectedKey: null
       }));
     }
     else {
-      const targetNode = state.nodeDataArray.find(node => node.key === state.selectedKey);
+      const targetNode = state.nodeDataMap.get(state.selectedKey);
       if (targetNode === undefined || targetNode.group !== undefined) {
         return state;
       }
 
       let removed: number[] = [];
-      let updatedNodeDataArray: Array<go.ObjectData> = state.nodeDataArray.filter(node => {
+      let updatedNodeDataMap = new Map<number, go.ObjectData>();
+      state.nodeDataMap.forEach(node => {
         if (node.key === state.selectedKey) {
           removed.push(node.key);
-          return false;
+          //return false;
         }
-        if (node.group !== undefined && node.group === state.selectedKey) {
+        else if (node.group !== undefined && node.group === state.selectedKey) {
           removed.push(node.key);
-          return false;
+          //return false;
         }
-        return true;
+        else {
+          updatedNodeDataMap.set(node.key, node);
+          //return true;
+        }
       });
 
       let updatedSourceTableNodes: coords[] = [...state.sourceTableNodes];
@@ -950,15 +947,18 @@ class App extends React.Component<{}, AppState> {
         updateConsts = updateConsts.filter(key => key !== targetNode.key);
       }
 
-      let updatedLinkDataArray: Array<go.ObjectData> = state.linkDataArray.filter(link =>
-        removed.includes(link.from) === false && removed.includes(link.to) === false
-      );
+      let updatedLinkDataMap = new Map<number, go.ObjectData>();
+      state.linkDataMap.forEach(link => {
+        if (removed.includes(link.from) === false && removed.includes(link.to) === false) {
+          updatedLinkDataMap.set(link.key, link);
+        }
+      });
 
-      const newLhsMax = updatedNodeDataArray.length - 3 - updatedSourceTableNodes.length * 2 - updateConsts.length;
+      const newLhsMax = updatedNodeDataMap.size - 3 - updatedSourceTableNodes.length * 2 - updateConsts.length;
 
       return this.updateDependencyNodeValues(this.createState(state, {
-        nodeDataArray: updatedNodeDataArray,
-        linkDataArray: updatedLinkDataArray,
+        nodeDataMap: updatedNodeDataMap,
+        linkDataMap: updatedLinkDataMap,
         sourceTableNodes: updatedSourceTableNodes,
         consts: updateConsts,
         lhsStep: Math.min(state.lhsStep, newLhsMax),
@@ -969,11 +969,21 @@ class App extends React.Component<{}, AppState> {
 
   handleListSelect(value: string, nodeKey: number) {
     console.log('list select:', value, nodeKey);
-    let updatedNodeDataArray = [...this.state.nodeDataArray];
-    let updatedLinkDataArray = [...this.state.linkDataArray];
+    let updatedNodeDataMap = new Map(this.state.nodeDataMap);
+    let updatedLinkDataMap = new Map(this.state.linkDataMap);
 
-    const link = updatedLinkDataArray.find((l) => l.to === nodeKey);
-    let linkedNode = updatedNodeDataArray.find((node) => node.key === link?.from);
+    let link: go.ObjectData | undefined;
+    updatedLinkDataMap.forEach((value) => {
+      if (value.to === nodeKey) {
+        link = value;
+      }
+    });
+    let linkedNode: go.ObjectData | undefined;
+    updatedNodeDataMap.forEach((node) => {
+      if (node.key === link?.from) {
+        linkedNode = node;
+      }
+    });
 
     let newLhsStep = this.state.lhsStep;
 
@@ -981,14 +991,14 @@ class App extends React.Component<{}, AppState> {
     console.log('linkedNode:', linkedNode);
 
     if (linkedNode?.nodeName === "const") {
-      updatedNodeDataArray = updatedNodeDataArray.filter((n) => n.key !== linkedNode?.key);
+      updatedNodeDataMap.delete(linkedNode.key);
       newLhsStep--;
     }
-    updatedLinkDataArray = updatedLinkDataArray.filter((l) => l.to !== nodeKey);
+    updatedLinkDataMap = new Map(Array.from(updatedLinkDataMap).filter(([_, l]) => l.to !== nodeKey));
 
     const cleanedState = this.createState(this.state, {
-      nodeDataArray: updatedNodeDataArray,
-      linkDataArray: updatedLinkDataArray,
+      nodeDataMap: updatedNodeDataMap,
+      linkDataMap: updatedLinkDataMap,
     });
 
     let _newKeys: number[] = [];
@@ -1011,8 +1021,8 @@ class App extends React.Component<{}, AppState> {
       newLhsStep++;
     }
 
-    console.log('nodes:', edgedState.nodeDataArray);
-    console.log('links:', edgedState.linkDataArray);
+    console.log('nodes:', edgedState.nodeDataMap);
+    console.log('links:', edgedState.linkDataMap);
 
     this.setState(this.updateDependencyNodeValues(this.createState(edgedState, {
       lhsStep: newLhsStep,
@@ -1175,26 +1185,28 @@ class App extends React.Component<{}, AppState> {
       state = this.state;
     }
 
-    let updatedNodeDataArray = [...state.nodeDataArray];
-    let updatedLinkDataArray = [...state.linkDataArray];
     let valuedState = state;
 
     if (nVals < state.vals) {
+      let updatedNodeDataMap = new Map<number, go.ObjectData>();
+      let updatedLinkDataMap = new Map<number, go.ObjectData>();
       let removed: number[] = [];
-      updatedNodeDataArray = updatedNodeDataArray.filter((node) => {
+      state.nodeDataMap.forEach((node) => {
         if (node.nodeName?.startsWith('val') && parseInt(node.nodeName[3]) > nVals) {
           removed.push(node.key);
-          return false;
         }
-        return true;
+        else {
+          updatedNodeDataMap.set(node.key, node);
+        }
       });
-      updatedLinkDataArray = updatedLinkDataArray.filter((link) =>
-        removed.includes(link.from) === false && removed.includes(link.to) === false
-      );
+      state.linkDataMap.forEach((link) => {
+        if (removed.includes(link.from) === false && removed.includes(link.to) === false)
+          updatedLinkDataMap.set(link.key, link);
+      });
 
       valuedState = this.createState(state, {
-        nodeDataArray: updatedNodeDataArray,
-        linkDataArray: updatedLinkDataArray,
+        nodeDataMap: updatedNodeDataMap,
+        linkDataMap: updatedLinkDataMap,
       });
     }
     else if (nVals > state.vals) {
@@ -1209,7 +1221,7 @@ class App extends React.Component<{}, AppState> {
           category: "out",
         });
         nodeGroups.push(0);
-        state.nodeDataArray.forEach((node) => {
+        state.nodeDataMap.forEach((node) => {
           if (node.isGroup && node.category === "source") {
             let newValue = NaN;
             if (node.tableX >= 0 && node.tableX < state.x && node.tableY >= 0 && node.tableY < state.y) {
@@ -1250,7 +1262,7 @@ class App extends React.Component<{}, AppState> {
           category: "hidden"
         });
       }
-      
+
       let _newEdgeKeys: number[];
       [valuedState, _newEdgeKeys] = this.addDependencyEdges(newEdges, nodedState);
     }
@@ -1367,8 +1379,8 @@ class App extends React.Component<{}, AppState> {
   }
 
   render() {
-    console.log('nodeDataArray', this.state.nodeDataArray);
-    console.log('linkDataArray', this.state.linkDataArray);
+    console.log('nodeDataArray', this.state.nodeDataMap);
+    console.log('linkDataArray', this.state.linkDataMap);
     console.log('tableNodes', this.state.tableNodes);
 
     return (
@@ -1461,10 +1473,10 @@ class App extends React.Component<{}, AppState> {
                       value={this.state.lhsStep}
                       min="0"
                       max={
-                        this.state.nodeDataArray.length - 3 //output group, x, y
-                                                        - this.state.sourceTableNodes.length //input group
-                                                        - this.state.sourceTableNodes.length * this.state.vals //input values
-                                                        - this.state.consts.length //constants
+                        this.state.nodeDataMap.size - 3 //output group, x, y
+                        - this.state.sourceTableNodes.length //input group
+                        - this.state.sourceTableNodes.length * this.state.vals //input values
+                        - this.state.consts.length //constants
                       }
                       onChange={(e) =>
                         this.commitState(this.updateStep(Number(e.target.value), this.state.rhsStep))
@@ -1493,8 +1505,8 @@ class App extends React.Component<{}, AppState> {
             </div>
             <div className="lower-part">
               <LhsDiagramWrapper
-                nodeDataArray={this.state.nodeDataArray}
-                linkDataArray={this.state.linkDataArray}
+                nodeDataArray={Array.from(this.state.nodeDataMap.values())}
+                linkDataArray={Array.from(this.state.linkDataMap.values())}
                 modelData={this.state.modelData}
                 skipsDiagramUpdate={this.state.skipsDiagramUpdate}
                 onDiagramEvent={this.handleDiagramEvent}
