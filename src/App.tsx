@@ -35,7 +35,9 @@ interface AppState {
 
   lockDialogOpen: boolean;
   lockDialogNode: tableNode | null;
-  dialogValue: number;
+  dialogVal1: number;
+  dialogVal2: number;
+  dialogVal3: number;
   lockDialogLock: boolean;
 
   constDialogOpen: boolean;
@@ -66,9 +68,6 @@ class App extends React.Component<{}, AppState> {
   constructor(props: {}) {
     super(props);
     const newNodes: tableNode[][] = [];
-    //    for (let i = 0; i < x * y; i++) {
-    //      newNodes.push({ id: i, text: `Node ${i}`, connections: [], value: NaN, locked: false });
-    //    }
     for (let i = 0; i < y; i++) {
       newNodes.push([]);
       for (let j = 0; j < x; j++) {
@@ -100,7 +99,9 @@ class App extends React.Component<{}, AppState> {
 
       lockDialogOpen: false,
       lockDialogNode: null,
-      dialogValue: 0,
+      dialogVal1: 0,
+      dialogVal2: 0,
+      dialogVal3: 0,
       lockDialogLock: false,
 
       constDialogOpen: false,
@@ -876,10 +877,20 @@ class App extends React.Component<{}, AppState> {
 
       const [nodedState, newKeys] = this.addDependencyNodes(newNodes, state);
 
+      let edgedState = nodedState;
+      let _newKeys: number[] = [];
+      for (let i = 0; i < state.vals; i++) {
+        [edgedState, _newKeys] = this.addDependencyEdges([
+          { from: newKeys[1], to: newKeys[3 + i], fromPort: "bottomPort", toPort: "leftPort", category: "hidden" },
+          { from: newKeys[2], to: newKeys[3 + i], fromPort: "bottomPort", toPort: "rightPort", category: "hidden" }
+        ], edgedState);
+      }
+      /*
       const [edgedState, _newKeys] = this.addDependencyEdges([
         { from: newKeys[1], to: newKeys[3], fromPort: "bottomPort", toPort: "leftPort", category: "hidden" },
         { from: newKeys[2], to: newKeys[3], fromPort: "bottomPort", toPort: "rightPort", category: "hidden" },
       ], nodedState);
+      */
 
       return this.createState(edgedState, {
         selectedTableNode: undefined,
@@ -1046,7 +1057,13 @@ class App extends React.Component<{}, AppState> {
 
       if (draft.lockDialogNode) {
         const { x, y } = draft.lockDialogNode;
-        draft.tableNodes[y][x].value[0] = draft.dialogValue;
+        draft.tableNodes[y][x].value[0] = draft.dialogVal1;
+        if (draft.vals > 1) {
+          draft.tableNodes[y][x].value[1] = draft.dialogVal2;
+        }
+        if (draft.vals > 2) {
+          draft.tableNodes[y][x].value[2] = draft.dialogVal3;
+        }
         draft.tableNodes[y][x].locked = draft.lockDialogLock;
       }
 
@@ -1269,7 +1286,9 @@ class App extends React.Component<{}, AppState> {
       this.setState({
         lockDialogOpen: false,
         lockDialogNode: null,
-        dialogValue: 0,
+        dialogVal1: 0,
+        dialogVal2: 0,
+        dialogVal3: 0,
         lockDialogLock: false,
       });
       return;
@@ -1277,7 +1296,9 @@ class App extends React.Component<{}, AppState> {
     this.setState({
       lockDialogOpen: true,
       lockDialogNode: node,
-      dialogValue: node.value[0],
+      dialogVal1: node.value[0],
+      dialogVal2: node.value[1],
+      dialogVal3: node.value[2],
       lockDialogLock: true,
     });
   };
@@ -1544,15 +1565,38 @@ class App extends React.Component<{}, AppState> {
               <strong>Index:</strong> {this.state.lockDialogNode.id}
             </p>
             <label>
-              Value:
+              Value 1:
               <input
                 type="number"
-                value={this.state.dialogValue}
+                value={this.state.dialogVal1}
                 onChange={(e) =>
-                  this.setState({ dialogValue: Number(e.target.value) })
+                  this.setState({ dialogVal1: Number(e.target.value) })
                 }
               />
             </label>
+            {this.state.vals > 1 && (
+              <><br></br>
+                <label>
+                  Value 2:
+                  <input
+                    type="number"
+                    value={this.state.dialogVal2}
+                    onChange={(e) => this.setState({ dialogVal2: Number(e.target.value) })} />
+                </label></>
+            )}
+            {this.state.vals > 2 && (
+              <><br></br>
+                <label>
+                  Value 3:
+                  <input
+                    type="number"
+                    value={this.state.dialogVal3}
+                    onChange={(e) =>
+                      this.setState({ dialogVal3: Number(e.target.value) })
+                    }
+                  />
+                </label></>
+            )}
             <label>
               Locked:
               <input
@@ -1587,15 +1631,15 @@ class App extends React.Component<{}, AppState> {
               Value:
               <input
                 type="number"
-                value={this.state.dialogValue}
+                value={this.state.dialogVal1}
                 onChange={(e) =>
-                  this.setState({ dialogValue: Number(e.target.value) })
+                  this.setState({ dialogVal1: Number(e.target.value) })
                 }
               />
             </label>
             <div className="dialog-buttons">
               <button onClick={() => {
-                const [newState, _newKeys] = this.addConstant(this.state.dialogValue);
+                const [newState, _newKeys] = this.addConstant(this.state.dialogVal1);
                 this.commitState(this.createState(newState, {
                   constDialogOpen: false,
                 }));
