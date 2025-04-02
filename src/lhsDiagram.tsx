@@ -384,7 +384,8 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
       {
         mouseEnter: (_e, link) => link.elt(0).stroke = "rgba(0,90,156,0.3)",
         mouseLeave: (_e, link) => link.elt(0).stroke = "transparent",
-        routing: go.Routing.AvoidsNodes
+        routing: go.Routing.AvoidsNodes,
+        curve: go.Curve.JumpGap
       },
       $(go.Shape, { isPanelMain: true, stroke: "transparent", strokeWidth: 8 }),
       $(go.Shape, { isPanelMain: true }),
