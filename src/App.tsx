@@ -11,7 +11,9 @@ interface tableNode {
   text: string;
   value: number[];
   locked: boolean;
-  color: number;
+  hoverSink: boolean;
+  hoverSource: boolean;
+  sources: coords[];
 }
 
 interface coords {
@@ -72,7 +74,7 @@ class App extends React.Component<{}, AppState> {
       newNodes.push([]);
       for (let j = 0; j < x; j++) {
         const index = j + i * x;
-        newNodes[i].push({ id: index, x: j, y: i, text: `Node ${i}`, value: [NaN, NaN, NaN], locked: false, color: 0 });
+        newNodes[i].push({ id: index, x: j, y: i, text: `Node ${i}`, value: [NaN, NaN, NaN], locked: false, hoverSink: false, hoverSource: false, sources: [] });
       }
     }
     this.state = {
@@ -309,6 +311,14 @@ class App extends React.Component<{}, AppState> {
             }
           }
         });
+
+        let sources: coords[] = [];
+        dummyMap.forEach((node) => {
+          if (node.category === "source") {
+            sources.push({ x: node.tableX, y: node.tableY });
+          }
+        });
+        updatedTableNodes[i][j].sources = sources;
       }
     }
 
@@ -1076,6 +1086,7 @@ class App extends React.Component<{}, AppState> {
           draft.tableNodes[y][x].value[2] = draft.dialogVal3;
         }
         draft.tableNodes[y][x].locked = draft.lockDialogLock;
+        draft.tableNodes[y][x].sources = [];
       }
 
       draft.lockDialogOpen = false;
@@ -1112,7 +1123,9 @@ class App extends React.Component<{}, AppState> {
             text: `Node ${j + i * nX}`,
             value: currNode.value,
             locked: currNode.locked,
-            color: currNode.color,
+            hoverSink: currNode.hoverSink,
+            hoverSource: currNode.hoverSource,
+            sources: currNode.sources,
           });
         } else {
           updatedTableNodes[i].push({
@@ -1122,7 +1135,9 @@ class App extends React.Component<{}, AppState> {
             text: `Node ${j + i * nX}`,
             value: [NaN, NaN, NaN],
             locked: false,
-            color: 0,
+            hoverSink: false,
+            hoverSource: false,
+            sources: [],
           });
         }
       }
@@ -1165,7 +1180,9 @@ class App extends React.Component<{}, AppState> {
             text: `Node ${j + i * state.x}`,
             value: [NaN, NaN, NaN],
             locked: false,
-            color: 0,
+            hoverSink: false,
+            hoverSource: false,
+            sources: [],
           });
         }
       }
@@ -1322,8 +1339,17 @@ class App extends React.Component<{}, AppState> {
           return;
         }
 
-        draft.tableNodes[node.y][node.x].color = 1;
+        draft.tableNodes[node.y][node.x].hoverSink = true;
 
+        draft.tableNodes[node.y][node.x].sources.forEach((source) => {
+          if (source.x < 0 || source.x >= draft.x ||
+            source.y < 0 || source.y >= draft.y) {
+            return;
+          }
+          draft.tableNodes[source.y][source.x].hoverSource = true;
+        });
+
+        /*
         draft.sourceTableNodes.forEach((source) => {
           const newX = source.x - (draft.sinkTableNode.x - node.x);
           const newY = source.y - (draft.sinkTableNode.y - node.y);
@@ -1331,6 +1357,7 @@ class App extends React.Component<{}, AppState> {
             draft.tableNodes[newY][newX].color = 2;
           }
         });
+        */
       })
     );
   }
@@ -1342,8 +1369,16 @@ class App extends React.Component<{}, AppState> {
           return;
         }
 
-        draft.tableNodes[node.y][node.x].color = 0;
+        draft.tableNodes[node.y][node.x].hoverSink = false;
+        draft.tableNodes[node.y][node.x].sources.forEach((source) => {
+          if (source.x < 0 || source.x >= draft.x ||
+            source.y < 0 || source.y >= draft.y) {
+            return;
+          }
+          draft.tableNodes[source.y][source.x].hoverSource = false;
+        });
 
+        /*
         draft.sourceTableNodes.forEach((source) => {
           const newX = source.x - (draft.sinkTableNode.x - node.x);
           const newY = source.y - (draft.sinkTableNode.y - node.y);
@@ -1351,6 +1386,7 @@ class App extends React.Component<{}, AppState> {
             draft.tableNodes[newY][newX].color = 0;
           }
         });
+        */
       })
     );
   }
@@ -1550,8 +1586,8 @@ class App extends React.Component<{}, AppState> {
                   </div>
                   <div
                     className={`graph-node
-                      ${node.color === 1 ? 'hover-sink' : ''}
-                      ${node.color === 2 ? 'hover-source' : ''}
+                      ${node.hoverSink ? 'hover-sink' : ''}
+                      ${node.hoverSource ? 'hover-source' : ''}
                     `}
                     onClick={() => this.setSelectedNode(node)}
                     onMouseEnter={() => this.handleNodeMouseEnter(node)}
