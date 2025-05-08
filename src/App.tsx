@@ -289,6 +289,11 @@ class App extends React.Component<{}, AppState> {
           continue;
         }
 
+        if (i * x + j >= rhsStep) {
+          updatedTableNodes[i][j].value = [NaN, NaN, NaN];
+          continue;
+        }
+
         let offsetX = j - sink.x;
         let offsetY = i - sink.y;
 
@@ -431,11 +436,11 @@ class App extends React.Component<{}, AppState> {
         if (dep) {
           let newValue = this.executeUnaryOperation(target.nodeName, dep.nodeValue);
 
-            nodeDataMap.set(dKey, {
-              ...target,
-              nodeValue: newValue,
-              nodeText: this.formatValue(newValue)
-            });
+          nodeDataMap.set(dKey, {
+            ...target,
+            nodeValue: newValue,
+            nodeText: this.formatValue(newValue)
+          });
         }
       }
       else if (target.nodeName === "x") {
@@ -1404,8 +1409,8 @@ class App extends React.Component<{}, AppState> {
               <button onClick={() => this.commitState(this.handleAddSourceButton())}>Add Source</button>
               <button onClick={this.handleConstantButton}>Constant</button>
               <button onClick={() => this.commitState(this.handleDeleteButton())}>Delete</button>
-              <button style={{ marginLeft: "2.5rem" }} 
-                      onClick={() => this.commitState(this.addMutableNode("List A"))}>List A</button>
+              <button style={{ marginLeft: "2.5rem" }}
+                onClick={() => this.commitState(this.addMutableNode("List A"))}>List A</button>
               <button onClick={() => this.commitState(this.addMutableNode("List B"))}>List B</button>
               <button
                 style={{ marginLeft: "2.5rem" }}
