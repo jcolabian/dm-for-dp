@@ -181,7 +181,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
               {
                 desiredSize: new go.Size(15, 15),
                 alignment: new go.Spot(0.5, 0, 0, 2),
-                fill: "#24ca2c",
+                fill: "#82aade",
                 stroke: "black",
                 portId: "topPort",
                 fromLinkable: false, toLinkable: true,
@@ -198,7 +198,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
               {
                 desiredSize: new go.Size(15, 15),
                 alignment: new go.Spot(0, 0.5, 2, 1),
-                fill: "#24ca2c",
+                fill: "#82aade",
                 stroke: "black",
                 portId: "leftPort",
                 fromLinkable: false, toLinkable: true,
@@ -212,7 +212,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
               {
                 desiredSize: new go.Size(15, 15),
                 alignment: new go.Spot(1, 0.5, -2, 1),
-                fill: "#24ca2c",
+                fill: "#82aade",
                 stroke: "black",
                 portId: "rightPort",
                 fromLinkable: false, toLinkable: true,
@@ -229,7 +229,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
               {
                 desiredSize: new go.Size(15, 15),
                 alignment: new go.Spot(0, 0.5, 2, 1),
-                fill: "#24ca2c",
+                fill: "#82aade",
                 stroke: "black",
                 portId: "leftPort",
                 fromLinkable: false, toLinkable: true,
@@ -243,7 +243,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
               {
                 desiredSize: new go.Size(15, 15),
                 alignment: new go.Spot(1, 0.5, -2, 1),
-                fill: "#24ca2c",
+                fill: "#82aade",
                 stroke: "black",
                 portId: "rightPort",
                 fromLinkable: false, toLinkable: true,
@@ -257,7 +257,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
               {
                 desiredSize: new go.Size(15, 15),
                 alignment: new go.Spot(0.5, 0, 0, 2),
-                fill: "#24ca2c",
+                fill: "#82aade",
                 stroke: "black",
                 portId: "topPort",
                 fromLinkable: false, toLinkable: true,
@@ -351,7 +351,7 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
             {
               desiredSize: new go.Size(15, 15),
               alignment: new go.Spot(0.5, 1, 0, -1),
-              fill: "#ec4d4d",
+              fill: "#e26660",
               stroke: "black",
               portId: "bottomPort",
               fromLinkable: true, toLinkable: false,
@@ -425,9 +425,9 @@ export class LhsDiagramWrapper extends React.Component<WrapperProps, {}> {
 
     diagram.groupTemplate = makeGroupTemplate("rgba(128,128,128,0.2)");
 
-    diagram.groupTemplateMap.add("source", makeGroupTemplate("rgba(0,128,0,0.3)"));
+    diagram.groupTemplateMap.add("source", makeGroupTemplate("rgba(130, 170, 222, 0.3)"));
 
-    diagram.groupTemplateMap.add("sink", makeGroupTemplate("rgba(128,0,0,0.3)"));
+    diagram.groupTemplateMap.add("sink", makeGroupTemplate("rgba(226, 102, 96, 0.3)"));
 
     diagram.validCycle = go.CycleMode.NotDirected;
 

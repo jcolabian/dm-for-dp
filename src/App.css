@@ -36,7 +36,7 @@
 
 .lower-part {
   height: calc(100% - 136px);
-  background-color: #ff0000;
+  background-color: #000000;
 }
 
 .graph-area {
@@ -93,13 +93,13 @@
 }
 
 .node-container.sink .graph-node {
-  background-color: #ec4d4d;
+  background-color: #e26660;
 }
 
 .node-container.source .graph-node {
-  background-color: #24ca2c;
+  background-color: #82aade;
 }
-
+/*
 .node-container.sink.selected .graph-node {
   background-color: #bf4dec;
 }
@@ -107,17 +107,23 @@
 .node-container.source.selected .graph-node {
   background-color: #ece924;
 }
-
+*/
 .graph-node:hover {
   box-shadow: inset 0 0 0 3px #a0c4ff;
 }
 
 .graph-node.hover-sink {
-  box-shadow: inset 0 0 0 3px #ec4d4dcc;
+  box-shadow: inset 0 0 0 3px #e26660cc;
 }
 
 .graph-node.hover-source {
-  box-shadow: inset 0 0 0 3px #24ca2ccc;
+  box-shadow: inset 0 0 0 3px #82aadecc;
+}
+
+.graph-node.hover-sink.hover-source {
+  box-shadow: 
+    inset 0 0 0 2px #5e91d4cc,
+    inset 0 0 0 5px #e26660cc;
 }
 
 .edge-line {
