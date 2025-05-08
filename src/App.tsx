@@ -189,7 +189,7 @@ class App extends React.Component<{}, AppState> {
 
     e.insertedLinkKeys?.forEach((key) => {
       const link = e.modifiedLinkData?.find((link) => link.key === key);
-      if (link && link.key < this.state.currEdgeKey) {
+      if (link && !this.state.linkDataMap.has(link.key)) {
         updatedLinkDataMap.set(link.key, link);
         currEdgeKey = Math.min(currEdgeKey, link.key);
       }
