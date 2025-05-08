@@ -55,9 +55,9 @@ interface AppState {
   leftWidth: number;
 }
 
-const x = 12;
-const y = 1;
-const vals = 1;
+const initX = 12;
+const initY = 1;
+const initVals = 1;
 
 const listTemplate: number[] = [];
 for (let i = 0; i < 16; i++) {
@@ -70,10 +70,10 @@ class App extends React.Component<{}, AppState> {
   constructor(props: {}) {
     super(props);
     const newNodes: tableNode[][] = [];
-    for (let i = 0; i < y; i++) {
+    for (let i = 0; i < initY; i++) {
       newNodes.push([]);
-      for (let j = 0; j < x; j++) {
-        const index = j + i * x;
+      for (let j = 0; j < initX; j++) {
+        const index = j + i * initX;
         newNodes[i].push({ id: index, x: j, y: i, text: `Node ${i}`, value: [NaN, NaN, NaN], locked: false, hoverSink: false, hoverSource: false, sources: [] });
       }
     }
@@ -107,12 +107,12 @@ class App extends React.Component<{}, AppState> {
 
       constDialogOpen: false,
 
-      x: x,
-      y: y,
-      vals: vals,
+      x: initX,
+      y: initY,
+      vals: initVals,
 
       lhsStep: 1,
-      rhsStep: x * y,
+      rhsStep: initX * initY,
 
       consts: [],
       leftWidth: 40,
