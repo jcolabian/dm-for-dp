@@ -429,46 +429,13 @@ class App extends React.Component<{}, AppState> {
       if (deps && deps.length === 1) {
         const dep = nodeDataMap.get(deps[0].from);
         if (dep) {
-          if (target.nodeName === "Not") {
-            let newValue = (dep.nodeValue === 0) ? 1 : 0;
-            if (isNaN(dep.nodeValue)) {
-              newValue = NaN;
-            }
+          let newValue = this.executeUnaryOperation(target.nodeName, dep.nodeValue);
+
             nodeDataMap.set(dKey, {
               ...target,
               nodeValue: newValue,
               nodeText: this.formatValue(newValue)
             });
-          }
-          else if (target.nodeName === "List A") {
-            let newValue = NaN;
-            if (dep.nodeValue >= 0 && dep.nodeValue < listA.length) {
-              newValue = listA[dep.nodeValue];
-            }
-            nodeDataMap.set(dKey, {
-              ...target,
-              nodeValue: newValue,
-              nodeText: newValue
-            });
-          }
-          else if (target.nodeName === "List B") {
-            let newValue = NaN;
-            if (dep.nodeValue >= 0 && dep.nodeValue < listB.length) {
-              newValue = listB[dep.nodeValue];
-            }
-            nodeDataMap.set(dKey, {
-              ...target,
-              nodeValue: newValue,
-              nodeText: newValue
-            });
-          }
-          else {
-            nodeDataMap.set(dKey, {
-              ...target,
-              nodeValue: dep.nodeValue,
-              nodeText: this.formatValue(dep.nodeValue)
-            });
-          }
         }
       }
       else if (target.nodeName === "x") {
@@ -517,7 +484,7 @@ class App extends React.Component<{}, AppState> {
           if (deps[0].toPort === "rightPort" && deps[1].toPort === "leftPort") {
             [leftDep, rightDep] = [rightDep, leftDep];
           }
-          let newValue = this.executeOperation(target.nodeName, leftDep.nodeValue, rightDep.nodeValue);
+          let newValue = this.executeBinaryOperation(target.nodeName, leftDep.nodeValue, rightDep.nodeValue);
           nodeDataMap.set(dKey, {
             ...target,
             nodeValue: newValue,
@@ -630,11 +597,20 @@ class App extends React.Component<{}, AppState> {
     return updatedNodeDataMap;
   }
 
-  executeOperation(operation: string, a: number, b: number): number {
-    if (isNaN(a) || isNaN(b)) {
-      return NaN;
+  executeUnaryOperation(operation: string, a: number): number {
+    switch (operation) {
+      case 'Not':
+        return (a === 0) ? 1 : 0;
+      case 'List A':
+        return (a >= 0 && a < listA.length) ? listA[a] : NaN;
+      case 'List B':
+        return (a >= 0 && a < listB.length) ? listB[a] : NaN;
+      default:
+        return a;
     }
+  }
 
+  executeBinaryOperation(operation: string, a: number, b: number): number {
     switch (operation) {
       case 'Addition':
         return a + b;
@@ -651,7 +627,7 @@ class App extends React.Component<{}, AppState> {
       case 'Maximum':
         return Math.max(a, b);
       case 'Or':
-        return (a === 0 && b === 0) ? 0 : 1;
+        return (isNaN(a) || isNaN(b)) ? 0 : (a !== 0 || b !== 0) ? 1 : 0;
       case 'And':
         return (a !== 0 && b !== 0) ? 1 : 0;
       case 'Equal':
